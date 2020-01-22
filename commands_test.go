@@ -1,8 +1,8 @@
-package commando_test
+package mainline_test
 
 import (
 	"fmt"
-	commando "github.com/eurozulu/cmdline"
+	"github.com/eurozulu/mainline"
 	"net/url"
 	"os"
 	"testing"
@@ -27,10 +27,10 @@ func (c MyCommands) DoThat(name string, lockernumber int) {
 
 func TestCommands_AddCommand(t *testing.T) {
 
-	commando.MustAddCommand("dothis", MyCommands.DoThis)
-	commando.MustAddCommand("dothat", MyCommands.DoThat)
+	mainline.MustAddCommand("dothis", MyCommands.DoThis)
+	mainline.MustAddCommand("dothat", MyCommands.DoThat)
 
-	if err := commando.RunCommandLine(); err != nil {
+	if err := mainline.RunCommandLine(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

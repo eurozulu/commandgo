@@ -1,12 +1,12 @@
-Commando
+Mainline
 --------
 **Overview**  
 A command line argument parser with a twist.  
 Partly inspired by Java Spring's, container injection, 
-Commando takes the concept of a 'bean' and translates it into a generic go struct.
-Using the command line arguments as the 'bean definition' it creates an instance of the strut and injects the values from the command line into it.  
+Mainline takes the concept of a 'bean', translated to a generic go struct, and applied a 'bean definition', the arguments on the command line,
+injecting values and parameters into it, from the command line.  
   
-Methods on the struct can be mapped to string commands and the remaining command line arguments, following that command, will be parsed into the correct data types for the method parameters it is mapped to.  
+Methods on the struct are mapped to string commands and the remaining command line arguments, following that command, will be parsed into the correct data types for the method parameters it is mapped to.  
 
 Field values in the struct automatically become argument 'flags', (arguments starting with '-' or '--') 
 which, like the method parameters, can also be mapped into most data types.  
@@ -25,10 +25,10 @@ There is no constraint or interface required. This is simply an example.
 
 To use that struct we map any one of its exported methods to a string command, say 'host':  
 
-`commando.AddCommand("host", MyConfig.SetHost)`  
+`Mainline.AddCommand("host", MyConfig.SetHost)`  
 
-And then call commando from `main` to kick it off:  
-`commando.RunCommandLine()`  
+And then call Mainline from `main` to kick it off:  
+`Mainline.RunCommandLine()`  
 
 And that's it!  
 The application (mycode) can be started:  
@@ -69,7 +69,7 @@ Obviously the base types, string, int, bool and float as well as slices.
 Not sure about maps yet. 
 
 
-Part of the 'magic' is the mapping of data types from the string arguments, into the relevant type for the struct it maps to.  Using go's `reflect` package, commando matches the signatures of each field or method with the arguments available and attempts to convert the string arguments into data type which match those signatures.
+Part of the 'magic' is the mapping of data types from the string arguments, into the relevant type for the struct it maps to.  Using go's `reflect` package, Mainline matches the signatures of each field or method with the arguments available and attempts to convert the string arguments into data type which match those signatures.
 This allows the developer to define the exact parameter types for each command and the types of each flag for that command.
 
 
