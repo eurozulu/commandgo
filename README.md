@@ -25,7 +25,7 @@ There is no constraint or interface required. This is simply an example.
 
 To use that struct we map any one of its exported methods to a string command, say 'host':  
 
-`commando.AddCommand("host", Config.SetHost)`  
+`commando.AddCommand("host", MyConfig.SetHost)`  
 
 And then call commando from `main` to kick it off:  
 `commando.RunCommandLine()`  
