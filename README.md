@@ -79,97 +79,10 @@ with the exception of URL's, which are supported also.
 + `map` is not yet supported (As I think json encoder will do the same thing?)
 + all the base types, float, int, bool and string are supported.
 
-The result is a clean interface, with a single, simple struct for each command line command, able to process a command with multiple parameters and flags, with no requirement to bind to package interfaces or Objects.
-Using the data mapping offers powerful ways of taking string command line arguments and mapping them into complext data types.
->- Simple interface for development, with few limitations or bindings to the package.
->Flexible command structure from simple structs
->- Safe data type mapping for method parameters and fields.  
->- Overloading of commands.  
->`struct` methods are mapped using parameter type (ala java spring) so each method on the struct with a unique signature is one 'version' of the command that can be called.  
->(The method name is irrelevant, only its parameter signature.)  
->- Supports multiple data type conversion.  
->In addition to the regular int, float, bool etc supported, more complex types can be specified as flags or parameters and be coerced from the string arguments.  
->Dates, URLs and struct supporting the `json.Unmarshall` or `text.Unmarshall` iterface can also be specified.
->The string arguments will be parsed into those data types and assigned to the flag or paremeter of a method call. 
+The result is a clean, simple interface, which offers a powerfull way to build simple, command line tools.
 
-**Usage**  
-For each command, an instance of a struct should be mapped to one or more names. Each name acts as an alias for that command.   
-e.g.  To create a simple greeting command:  
-greet \<name\>  
-The greet command takes a single parameter, 'name' which is a string.  
-Begin with your own struct, defining the function of the command.  
 
-`type MyGreeter struct {`  
-`}`  
-`func(mc MyGreeter) GreetByName(name string) {`
- >>`fmt.Printf("Hello: %s, name)`  
- 
-`}`  
 
-Register an instance of `MyGreeter` with commando, under a unique name:  
-`var gr Greeter`  
-`commando.AddCommand("greet", &gr)`  
-
-... add any number of other commands...  
-
-Execute the command line arguments against the commands:   
-`commando.Run(os.Args[1:])`  
-
-If the command line arguments are:  
-`greet world`  
-The result woudl be:  
-`Hello world`  
-
-`greet`  
-on its own, throws an error:  
-`not enough arguments`  
-
-Adding a second method to the struct, with no arguments to catch this and provide a default name:  
-`func(mc MyGreeter) GreetDefault() {`
->>`// Call into original method with a default value`  
->>`mc.GreetByName("Everybody")`  
-
-`}`
-  
-Now `greet` on its own, shows:  
-`Hello Everybody`    
-
-Adding a further method for a second int parm to the struct,:  
-`func(mc MyGreeter) GreetNameAndRoom(name string, room int) {`
->>`n := fmt.Sprintf("%s, you are in room %d", name, room)`  
->>`mc.GreetByName(n)`  
-
-`}`
-  
-Now we can also use:  
-`greet joe 22` which shows:  
-`Hello joe, you are in room 22`    
-
-Each method on the structure gives an alternative parameter list to the greet command.  The end user can call greet with any one of the three combinations of parameters.
-
---------
-**Flags**  
-A Flag is a command line argument preceeding with a dash or double dash.  Flags usually have a following argument with a value,
-with the exception of boolean flags, where the value is optional.  
-Flags are handled as fields in the structure.  Each exported Field can be specified as a flag in the command line and the value of the commadn line flag is assigned to that field.  
-e.g.  
-`type MyGreeter struct {`  
->>`Verbose bool`  
->
-`}`
-
-`func (mg MyGreeter) greetName(name string){`  
->>`if mg.Verbose {`  
-...  
-
-From the command line, the user can specify:  
-greet john --verbose
-
-Fields support tags to add additional information to them or give them alternative names to the field name.
-`Verbose bool 'flag:"verbose,v"' `  
-Using a comma delimited list of names and aliases for the flag.
-With this tag the flag can be specified as:
---verbose or --v  
 
 
 **Notes**  
