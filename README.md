@@ -100,5 +100,15 @@ i.e. Method signatures (i int, s string) and (s string, i int) are two distinct 
 
 
 TODO:  
+Process the output.  Currently only reports errors and ignores return values of methods.  
+Should pipe output of method to std out.  
+
+Create a Token argument to specify new object, with no argument.  
+e.g. --dateformat .  
+So the type of the field Dateformat, dictates the actual instance.  
+`Dateformat time.RFC3339`  
+
+Also provide tokens for std.out and in.
+
 Integrate Godoc generation on the command struct into a help system for the command line.  
 Use commants from each method and from the struct itself to generate output for --help command

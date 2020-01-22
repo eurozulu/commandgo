@@ -8,16 +8,19 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var SliceDelimiter = ","
+var TimeFormat = time.RFC3339
 
 // ValueFromString attempts to parse the given string, into the given type.
 // If the string is parsable and the type is supported, the resulting value is returned as an interface.
 // Most types are supported with the exception of channels, functions.
 // struct's must support either the json.Unmarshaler or encoding.TextUnmarshaler interfaces.
+// Special cases for structs: URL and Time both supported
 // The argument string is passed to these to unmarshal into the struct.
-// slices/arrays are parsed as comma delimited items. Change theSliceDelimiter for something else.
+// slices/arrays are parsed as comma delimited items. Change the SliceDelimiter for something else.
 // All supported types can be used as item types of the array.
 // Base types float, int, bool string are supported.
 // Maps is a work in progress ;-)
@@ -63,6 +66,14 @@ func structureFromString(s string, t reflect.Type) (interface{}, error) {
 		return u, nil
 	}
 
+	if t == reflect.TypeOf(time.Time{}) {
+		u, err := time.Parse(TimeFormat, s)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
+		}
+		return u, nil
+	}
+
 	// If supports json, treat argument as json string
 	if t.Implements(reflect.TypeOf((json.Unmarshaler)(nil))) {
 		err := json.Unmarshal([]byte(s), pStr.Interface())
@@ -85,8 +96,8 @@ func structureFromString(s string, t reflect.Type) (interface{}, error) {
 		return pStr.Interface(), nil
 	}
 
-	return nil, fmt.Errorf("failed to unmarshal argument %s into paramter %s as that parameter does not support a supported unmarshalling interface." +
-		"Must support, json.Unmarshaler or encoding.TextUnmarshaler")
+	return nil, fmt.Errorf("failed to unmarshal argument %s into paramter %s as that parameter does not support a supported unmarshalling interface."+
+		"Must support, json.Unmarshaler or encoding.TextUnmarshaler", s, t)
 }
 
 func sliceFromString(s string, t reflect.Type) (interface{}, error) {

@@ -69,7 +69,7 @@ func (cmd Command) parseParams(args []string, s *Signature) ([]reflect.Value, er
 	for i, pt := range s.ParamTypes {
 		v, err := ValueFromString(args[i], pt)
 		if err != nil { // failed to parse as correct type, not a match
-			return nil, fmt.Errorf("parameter %d could not be parsed as a %s", args[1], pt.String())
+			return nil, fmt.Errorf("parameter %s could not be parsed as a %s", args[1], pt.String())
 		}
 		vals[i] = reflect.ValueOf(v).Elem()
 	}

@@ -34,7 +34,7 @@ func (c *Commands) AddCommand(name string, method interface{}) error {
 	}
 
 	if c.commands == nil {
-		c.commands = make(map[string] *Command)
+		c.commands = make(map[string]*Command)
 	}
 
 	c.commands[name] = &Command{
