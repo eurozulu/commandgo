@@ -1,0 +1,8 @@
+.DS_Store
+**/.idea
+tmp
+
+/chartmuseum
+config.json
+testdir
+env_deploy.env
