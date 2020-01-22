@@ -27,12 +27,10 @@ func (c MyCommands) DoThat(name string, lockernumber int) {
 
 func TestCommands_AddCommand(t *testing.T) {
 
-	cmds := commando.Commands{}
+	commando.MustAddCommand("dothis", MyCommands.DoThis)
+	commando.MustAddCommand("dothat", MyCommands.DoThat)
 
-	cmds.MustAddCommand("dothis", MyCommands.DoThis)
-	cmds.MustAddCommand("dothat", MyCommands.DoThat)
-
-	if err := cmds.RunCommandLine(); err != nil {
+	if err := commando.RunCommandLine(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
