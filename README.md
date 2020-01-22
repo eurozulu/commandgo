@@ -56,13 +56,15 @@ Fields can be marked with a tag to give them names, other than their field name,
 >> `Debug bool 'flag:"debug, d"'`  
 (Note incorrect outer quotes, but can't get tag /raw string quotes into mark down /-)  
 
-This marks the field with two name, 'debug' and 'db', both `--debug` and `--d` will set the Debug field.  
+This marks the field with two names, 'debug' and 'd', both `--debug` and `--d` will set the Debug field.  
 
 There is no limit to the number of parameters on a method however for every parameter there must be a corrisponding argument given on the command line.  
 Slices are supported therefore go, optional paramters are supported as a result.  
-Most data types can be mapped to from sensible values, even some structs.
+Most data types can be mapped to, from sensible values, even some structs.
 URLs are supported as seen in the example, but also any struct 
 which can parse json or encoded text, which they decode form the argument.  
+The json argument can be passed as a string json form.  
+  
 Obviously the base types, string, int, bool and float as well as slices.  
 Not sure about maps yet. 
 
@@ -72,7 +74,7 @@ This allows the developer to define the exact parameter types for each command a
 
 
 Most data types are supported with some limitations:  
-+ `struct` must implement the `encoding.Marshaller` or `json.Marshaller` interface
++ `struct` must implement the `encoding.Unmarshaller` or `json.Unmarshaller` interface
 with the exception of URL's, which are supported also.
 + `channel`, and `func` types are NOT supported
 + `slice` is supported
