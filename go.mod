@@ -1,3 +1,3 @@
-module github.com/eurozulu/cmdline
+module github.com/eurozulu/commando
 
 go 1.12
