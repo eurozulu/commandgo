@@ -22,7 +22,6 @@ type Flag struct {
 	FieldIndex int
 }
 
-
 // setFields sets all the given flags on the given (pointer) struct's fields.
 func (cmd Command) setFields(flds []Flag, pStr reflect.Value) error {
 	for _, f := range flds {
@@ -42,7 +41,6 @@ func (cmd Command) setFields(flds []Flag, pStr reflect.Value) error {
 	}
 	return nil
 }
-
 
 // parseFlags parses the given arguments for flags
 // returns the flags as a slice and the remaining, unnamed, arguments as a slice of strings
@@ -119,4 +117,3 @@ func (cmd Command) targetFieldIndex(name string) int {
 	}
 	return -1
 }
-
