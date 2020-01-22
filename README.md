@@ -92,12 +92,9 @@ The first argument dictates the command name
 
 All arguments marked as flags (- or --) are stripped from the argument list, along with their values.  
 Bool flags only take a value if the following argument can be parsed as bool.  Otherwise they default to true.  
-The remaining, unnamed, arguments are used as parameters to the method call.  These remaining arguments are matched to the available
-parameters in the method structure by position, so first remaining arg is first parameter and so on.  
+The remaining, unnamed, arguments are used as parameters to the method call.  
+These remaining arguments are matched to the available parameters in the method by position, so first remaining arg is first parameter and so on.  
 If the number of arguments and parameters do not match, an error is thrown as is one thrown if the string argument can not be parsed into that particular data type.  
-The order of flags, within the command line, is unimportant.  During parsing all flags and data are removed, leaving just the unnamed parameters which are passed to the method.  
-The order of the remaining parameters IS important, and is used to map to the correct parameter.  
-i.e. Method signatures (i int, s string) and (s string, i int) are two distinct method signatures.  
 
 
 TODO:  
