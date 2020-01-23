@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 )
 
 // commands is a slice of all the registered commands.
-var commands map[string]*Command
+var commands map[string]Command
 
 // MustAddCommand Adds a new command and panics if there is an error.
 func MustAddCommand(name string, cmd interface{}) {
@@ -18,30 +19,44 @@ func MustAddCommand(name string, cmd interface{}) {
 	}
 }
 
-// AddCommand add a new command mapping to the given method.
+// AddCommand add a new command mapping to the given method or function.
 // name must be a unique name.
-// method must be the func type of a method (NOT regular function)
-func AddCommand(name string, method interface{}) error {
-	if commands == nil {
-		commands = make(map[string]*Command)
-	}
-
-	name = strings.ToLower(name)
-	_, ok := commands[name]
+// method must be the func type or a method on a struct.  Only Methods support flags.
+func AddCommand(name string, fun interface{}) error {
+	cmdName := strings.ToLower(name)
+	_, ok := commands[cmdName]
 	if ok {
 		return fmt.Errorf("a command with the name %s already exists", name)
 	}
 
-	st, mt, err := methodFromFunc(method)
-	if err != nil {
-		return err
+	fv := reflect.ValueOf(fun)
+	if fv.Kind() != reflect.Func {
+		return fmt.Errorf("command %s must map to a func type, not a %s", name, fv.Kind().String())
 	}
 
-	commands[name] = &Command{
-		Name:       name,
-		method:     *mt,
-		structType: st,
+	fName := runtime.FuncForPC(fv.Pointer()).Name()
+	fn := FuncCommand{
+		name:      fName,
+		function:  fv,
+		signature: NewSignature(fv.Type(), false),
 	}
+
+	var cmd Command
+	if isFuncMethod(fName, fv) {
+		fn.signature = NewSignature(fv.Type(), true) // Skip the first param
+
+		cmd = &MethodCommand{
+			FuncCommand: fn,
+			structType:  fv.Type().In(0),
+		}
+	} else {
+		cmd = fn
+	}
+
+	if commands == nil {
+		commands = make(map[string]Command)
+	}
+	commands[name] = cmd
 	return nil
 }
 
@@ -61,24 +76,40 @@ func CommandNames() []string {
 	return n
 }
 
-func RunCommandLine() error {
-	return RunCommand(os.Args[1:]...)
+// RunCommandLine executes one of the pre-defined commands based on the first argument following the executable name in os.Args.
+// If the command returns an error it prints the error to standard err.
+func RunCommandLine() {
+	result, err := RunCommand(os.Args[1:]...)
+	if nil != err {
+		if _, err = fmt.Fprintln(os.Stderr, err); err != nil {
+			panic(err)
+		}
+	}
+
+	for _, v := range result {
+		if _, err = os.Stdout.WriteString(ValueToString(v)); err != nil {
+			panic(err)
+		}
+		if _, err = os.Stdout.WriteString("\n"); err != nil {
+			panic(err)
+		}
+	}
 }
 
 // RunCommand maps the given arguments to the respective command and executes it.
 // The first argument is used as the primary command mapping.
-func RunCommand(args ...string) error {
+func RunCommand(args ...string) ([]interface{}, error) {
 	if len(args) == 0 {
-		return fmt.Errorf("requires at least one argument")
+		return nil, fmt.Errorf("requires at least one argument")
 	}
 	cmd, err := findCommandByName(args[0])
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return cmd.Run(args)
+	return cmd.Call(args)
 }
 
-func findCommandByName(name string) (*Command, error) {
+func findCommandByName(name string) (Command, error) {
 	var matched []string
 
 	lName := strings.ToLower(name)
@@ -106,27 +137,40 @@ func findCommandByName(name string) (*Command, error) {
 	return nil, fmt.Errorf("%s is not a known command.  Did you mean %s", name, bf.String())
 }
 
-// methodFromFunc locates the parent structure and the method whic the given function points to.
-func methodFromFunc(f interface{}) (reflect.Type, *reflect.Method, error) {
-	ft := reflect.TypeOf(f)
-	if ft.Kind() != reflect.Func {
-		return nil, nil, fmt.Errorf("command function must be a func type, not a %s", ft.Kind().String())
-	}
+// isFuncMethod works out if the given func value is a Method or a regular func
+func isFuncMethod(name string, fn reflect.Value) bool {
+	ft := fn.Type()
+
+	// Must have a parent struct as first arg
 	if ft.NumIn() < 1 {
-		return nil, nil, fmt.Errorf("command function must be a method on a struct, not a stand alone function")
+		return false
 	}
-	st := ft.In(0)
-
-	fv := reflect.ValueOf(f)
-	fa := fmt.Sprintf("%v", fv)
-
-	mc := st.NumMethod()
-	for i := 0; i < mc; i++ {
-		m := st.Method(i)
-		id := fmt.Sprintf("%v", m.Func.Interface())
-		if id == fa {
-			return st, &m, nil
-		}
+	pn := parentName(name)
+	pt := ft.In(0)
+	if pt.String() != pn {
+		return false
 	}
-	return st, nil, fmt.Errorf("Failed to find func in parent structure.")
+	// Check they are the same func
+	mName := baseName(name)
+	m, ok := pt.MethodByName(mName)
+	if !ok {
+		return false
+	}
+
+	return m.Func.Pointer() == fn.Pointer()
+}
+
+func parentName(n string) string {
+	parentName := strings.Split(n, ".")
+	if len(parentName) < 1 {
+		return ""
+	}
+	return strings.Join(parentName[:len(parentName)-1], ".")
+}
+func baseName(n string) string {
+	bName := strings.Split(n, ".")
+	if len(bName) < 1 {
+		return ""
+	}
+	return bName[len(bName)-1]
 }

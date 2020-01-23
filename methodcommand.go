@@ -9,6 +9,11 @@ import (
 
 const tagKey = "flag"
 
+type MethodCommand struct {
+	FuncCommand
+	structType reflect.Type
+}
+
 // Flag is a named argument, preceeded with a dash or dounble dash. '-', '--'
 // All flags have a name, which is the remainder of the string following the dash(es).
 // With the exception of boolean flags, all flags must have a value, the argument following the name, separated with a space.
@@ -22,8 +27,26 @@ type Flag struct {
 	FieldIndex int
 }
 
+func (cmd MethodCommand) Call(args []string) ([]interface{}, error) {
+	// Parse flags first to remove them, and their data, from the command line.
+	flgs, cmdLine, err := cmd.parseFlags(args[1:])
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the new instance of the parent struct
+	pStr := reflect.New(cmd.structType)
+	if err := cmd.setFields(flgs, pStr); err != nil {
+		return nil, err
+	}
+
+	// Call the matched method with the values set it matched with.
+	cmd.FuncCommand.function = pStr.Elem().MethodByName(cmd.Name())
+	return cmd.FuncCommand.Call(cmdLine)
+}
+
 // setFields sets all the given flags on the given (pointer) struct's fields.
-func (cmd Command) setFields(flds []Flag, pStr reflect.Value) error {
+func (cmd MethodCommand) setFields(flds []Flag, pStr reflect.Value) error {
 	for _, f := range flds {
 		fld := pStr.Elem().Field(f.FieldIndex)
 		if !fld.IsValid() || !fld.CanSet() {
@@ -45,7 +68,7 @@ func (cmd Command) setFields(flds []Flag, pStr reflect.Value) error {
 // parseFlags parses the given arguments for flags
 // returns the flags as a slice and the remaining, unnamed, arguments as a slice of strings
 // Flag values are converted into their relevant type for the corrisponding field they are mapped to.
-func (cmd Command) parseFlags(args []string) ([]Flag, []string, error) {
+func (cmd MethodCommand) parseFlags(args []string) ([]Flag, []string, error) {
 	var flgs []Flag
 	var params []string
 
@@ -54,7 +77,6 @@ func (cmd Command) parseFlags(args []string) ([]Flag, []string, error) {
 			params = append(params, args[i])
 			continue
 		}
-
 		name := strings.TrimLeft(args[i], "-")
 		inx := cmd.targetFieldIndex(name)
 		if inx < 0 {
@@ -98,7 +120,7 @@ func (cmd Command) parseFlags(args []string) ([]Flag, []string, error) {
 
 // targetFieldIndex finds the index of the field in the target struct, of the given name.
 // name is checked, first against any "flag" tag.  If not present, checks for name match.
-func (cmd Command) targetFieldIndex(name string) int {
+func (cmd MethodCommand) targetFieldIndex(name string) int {
 	for i := 0; i < cmd.structType.NumField(); i++ {
 		fd := cmd.structType.Field(i)
 		tag, ok := fd.Tag.Lookup(tagKey)

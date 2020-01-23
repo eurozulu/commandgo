@@ -8,7 +8,6 @@ import (
 
 // Signature represents the signature of a method, both its parameters and its return types.
 type Signature struct {
-	Method      reflect.Method
 	ParamTypes  []reflect.Type
 	ReturnTypes []reflect.Type
 }
@@ -33,18 +32,24 @@ func (s Signature) listTypes(t []reflect.Type) string {
 }
 
 // NewSignature creates a new signature from the given method value
-func NewSignature(mv reflect.Method) *Signature {
-	t := mv.Type
-	params := make([]reflect.Type, t.NumIn()-1)
-	for i := 1; i < t.NumIn(); i++ {
-		params[i-1] = t.In(i)
+func NewSignature(t reflect.Type, isMethod bool) Signature {
+	start := 0
+	if isMethod {
+		start++
 	}
+
+	params := make([]reflect.Type, t.NumIn()-start)
+	x := 0
+	for i := start; i < t.NumIn(); i++ {
+		params[x] = t.In(i)
+		x++
+	}
+
 	returns := make([]reflect.Type, t.NumOut())
 	for i := 0; i < t.NumOut(); i++ {
 		returns[i] = t.Out(i)
 	}
-	return &Signature{
-		Method:      mv,
+	return Signature{
 		ParamTypes:  params,
 		ReturnTypes: returns,
 	}

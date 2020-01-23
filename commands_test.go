@@ -26,27 +26,36 @@ func (c MyCommands) DoThat(name string, lockernumber int) {
 func (c MyCommands) DoTheNumbers(i int, f float32, b bool) {
 	fmt.Printf("the numbers are: int: %v float: %v bool: %v\n", i, f, b)
 }
+func DoTheOther(s string) {
+	fmt.Println(s)
+}
 
 func TestCommands_AddCommand(t *testing.T) {
 
-	mainline.MustAddCommand("dothis", MyCommands.DoThis)
+	mainline.MustAddCommand("dothis", DoTheOther)
 	mainline.MustAddCommand("dothat", MyCommands.DoThat)
 
-	if err := mainline.RunCommand("dothis", "world"); err != nil {
+	_, err := mainline.RunCommand("dothis", "world")
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := mainline.RunCommand("dothat", "world", "22"); err != nil {
+	_, err = mainline.RunCommand("dothat", "world", "22")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mainline.RunCommand("dothis"); err == nil {
+
+	_, err = mainline.RunCommand("dothis")
+	if err == nil {
 		t.Fatal(fmt.Errorf("expected error of not enough params"))
 	}
-	if err := mainline.RunCommand("dothis", "hello", "world"); err == nil {
+	_, err = mainline.RunCommand("dothis", "hello", "world")
+	if err == nil {
 		t.Fatal(fmt.Errorf("expected error of too many params"))
 	}
 
-	if err := mainline.RunCommand("dothat", "hello", "world"); err == nil {
+	_, err = mainline.RunCommand("dothat", "hello", "world")
+	if err == nil {
 		t.Fatal(fmt.Errorf("expected unparsable int error"))
 	}
 }
@@ -54,7 +63,8 @@ func TestCommands_AddCommand(t *testing.T) {
 func TestCommands_NumberParams(t *testing.T) {
 	mainline.MustAddCommand("numbers", MyCommands.DoTheNumbers)
 
-	if err := mainline.RunCommand("numbers", "1", "1.2", "true"); err != nil {
+	_, err := mainline.RunCommand("numbers", "1", "1.2", "true")
+	if err != nil {
 		t.Fatal(err)
 	}
 }

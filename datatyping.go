@@ -14,6 +14,27 @@ import (
 var SliceDelimiter = ","
 var TimeFormat = time.RFC3339
 
+// Parse the given strings into values of the given types.
+// The length of both slices must be equal, with the type for the first string being the first type and so on.
+func ValuesFromString(v []string, types []reflect.Type) ([]interface{}, error) {
+	if len(v) < len(types) {
+		return nil, fmt.Errorf("not enough parameters")
+	}
+	if len(v) > len(types) {
+		return nil, fmt.Errorf("too many parameters")
+	}
+
+	vals := make([]interface{}, len(types))
+	for i, pt := range types {
+		val, err := ValueFromString(v[i], pt)
+		if err != nil { // failed to parse as correct type, not a match
+			return nil, fmt.Errorf("parameter %v could not be parsed as a %v", v[1], pt.String())
+		}
+		vals[i] = reflect.ValueOf(val).Elem().Interface()
+	}
+	return vals, nil
+}
+
 // ValueFromString attempts to parse the given string, into the given type.
 // If the string is parsable and the type is supported, the resulting value is returned as an interface.
 // Most types are supported with the exception of channels, functions.
