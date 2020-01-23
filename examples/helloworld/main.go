@@ -14,7 +14,7 @@ type Greeter struct {
 
 // SayHello will output hello to the given name
 func (gr Greeter) SayHello(name string) {
-	fmt.Printf("greet %s\n", name)
+	fmt.Printf("hello %s\n", name)
 
 	// If flag is set, then print addition output
 	if gr.Reply {
@@ -25,6 +25,6 @@ func (gr Greeter) SayHello(name string) {
 // main sets up the single command.  To test the example:
 // helloworld greet john --reply
 func main() {
-	mainline.MustAddCommand("hello", Greeter.SayHello)
+	mainline.MustAddCommand("greet", Greeter.SayHello)
 	mainline.RunCommandLine()
 }
