@@ -30,7 +30,11 @@ func ValuesFromString(v []string, types []reflect.Type) ([]interface{}, error) {
 		if err != nil { // failed to parse as correct type, not a match
 			return nil, fmt.Errorf("parameter %v could not be parsed as a %v", v[1], pt.String())
 		}
-		vals[i] = reflect.ValueOf(val).Elem().Interface()
+		if pt.Kind() == reflect.Ptr {
+			vals[i] = reflect.ValueOf(val).Interface()
+		} else {
+			vals[i] = reflect.ValueOf(val).Elem().Interface()
+		}
 	}
 	return vals, nil
 }

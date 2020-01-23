@@ -42,6 +42,8 @@ func (cmd MethodCommand) Call(args []string) ([]interface{}, error) {
 
 	// Call the matched method with the values set it matched with.
 	cmd.FuncCommand.function = pStr.Elem().MethodByName(cmd.Name())
+
+	cmdLine = append([]string{args[0]}, cmdLine...) // Insert the command again as function will strip it off
 	return cmd.FuncCommand.Call(cmdLine)
 }
 
@@ -80,7 +82,7 @@ func (cmd MethodCommand) parseFlags(args []string) ([]Flag, []string, error) {
 		name := strings.TrimLeft(args[i], "-")
 		inx := cmd.targetFieldIndex(name)
 		if inx < 0 {
-			return nil, nil, fmt.Errorf("%s is not a known flag", name)
+			return nil, nil, fmt.Errorf("--%s is not a known flag", name)
 		}
 
 		fld := cmd.structType.Field(inx)
