@@ -34,7 +34,7 @@ func AddCommand(name string, fun interface{}) error {
 		return fmt.Errorf("command %s must map to a func type, not a %s", name, fv.Kind().String())
 	}
 
-	fName := runtime.FuncForPC(fv.Pointer()).Name()
+	fName := FuncName(fun)
 	fn := FuncCommand{
 		name:      fName,
 		function:  fv,
@@ -173,4 +173,9 @@ func baseName(n string) string {
 		return ""
 	}
 	return bName[len(bName)-1]
+}
+
+func FuncName(f interface{}) string {
+	s := strings.Split(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), ".")
+	return s[len(s)-1]
 }
