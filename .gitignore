@@ -1,6 +1,6 @@
 .DS_Store
 **/.idea
-tmp
+/tmp
 
 /chartmuseum
 config.json
