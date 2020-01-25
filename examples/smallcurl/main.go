@@ -26,11 +26,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 )
 
 type SmallCurl struct {
-	// Header, when true, displays the response headers at the end of the body
+	// Header, when true, displays the response headers at the start of the body
 	Header bool `flag:"header,i"`
 	// Nobody, when true, will NOT return the body stream.  Used with Header to get just headers, or on its own gets response code.
 	Nobody bool
@@ -52,7 +51,7 @@ func (sc SmallCurl) Get(u *url.URL) (string, error) {
 	}
 
 	if !sc.Nobody {
-		io.Copy(os.Stdout, r.Body)
+		io.Copy(buf, r.Body)
 	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
