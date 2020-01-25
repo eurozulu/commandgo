@@ -18,45 +18,49 @@ An optional tag is available on the fields to mark them with alternative names o
 
 
 **Usage**  
-Using a generic 'MyConfig' type from our application model as our 'bean':   
-`type MyConfig struct {`  
+Using a generic (and somewhat contrived) 'Client' type from our application model as our 'bean':   
+`type Client struct {`  
 `}`  
-`func (c MyConfig) SetHost(u *url.Url) { ... }`  
-`func (c MyConfig) SetDatabase(db string, collection string, readOnly bool) { ... }`  
+`func (c Client) ReadMessages(u *url.Url) []string { ... }`  
+`func (c Client) SendMessages(u *url.Url, msgs []string, sendBy time.Time) { ... }`  
 
 - Note: This can be ANY struct.  One in your code or even a 3rd party lib struct.  
 There is no constraint or interface required. This is simply an example.  
 
-To use that struct we map any one of its exported methods to a string command, say 'host':  
+To use that struct we map any of its exported methods to string commands:  
 
-`mainline.AddCommand("host", MyConfig.SetHost)`  
+`mainline.AddCommand("read", Client.ReadMessages)`  
+`mainline.AddCommand("send", Client.SendMessages)`  
 
 And then call Mainline from `main()` function to kick it off:  
 `mainline.RunCommandLine()`  
 
 And that's it!  
-The application (mycode) can be started:  
-`>mycode host http://www.spoofer.org/`
+The application (myclient) can be started:  
+`>myclient read http://www.spoofer.org/messages`  
+or  
+`>myclient send http://www.spoofer.org/messages, "'We meet at one', 'one is the time'" 13:00:00`  
 
-And the `SetHost` method will be called with a URL pointer containg the given url, as a parameter.  
-
+And the `ReadMessages` or `SendMessages` methods will be called with the correct parameter types for each method.    
 Any number of commands can be mapped in this way, to any number of methods and structs or functions.  There are few limits on the functions and methods which can be mapped into, mostly limited by the data types of the parameters.  See further on for data type limitations.  
 
 *Fields*  
 To add flags to the command line, simply add a field to your struct:  
-`type MyConfig struct {`  
->>`Debug bool`  
+
+`type Client struct {`  
+>`Debug bool`  
 
 `}`  
-`func (c MyConfig) SetHost(u *url.Url) { ... }`  
-`func (c MyConfig) SetDatabase(db string, collection string, readOnly bool) { ... }`  
+`func (c Client) ReadMessages(u *url.Url) []string { ... }`  
+`func (c Client) SendMessages(u *url.Url, msgs []string, sendBy time.Time) { ... }`  
+
 
 By default a field will use its name as the flag name so the application could be started with:  
-`>mycode --debug host http://www.spoofer.org/`  
+`>myclient --debug read http://www.spoofer.org/`  
 And the field value of `Debug` will be set to true.
 
 Flag position is unimportant in the command line, however NON flags, parameter position is important as these must align with the parameters on the method being called.  
-`>mycode host http://www.spoofer.org/ --debug`  
+`>myclient read http://www.spoofer.org/ --debug`  
 is the same as the above.  
 
 *Tags*  
@@ -64,6 +68,10 @@ Fields can be marked with a tag to give them names, other than their field name,
 ``Debug bool ` `` ``flag:"debug, d"` `` 
 
 This marks the field with two names, 'debug' and 'd', both `--debug` and `--d` will set the Debug field.  
+
+A tag may also indicate when a field should be ignored and not used as a flag.  
+Marking a field name with a dash will mark the field as a non flag e.g. 'flag:"-"'  
+
 
 *Data types*  
 There is no limit to the number of parameters on a method however for every parameter there must be a corrisponding argument given on the command line.  
@@ -85,7 +93,7 @@ Most data types are supported with some limitations:
 + `struct` must implement the `encoding.Unmarshaller` or `json.Unmarshaller` interface
 with the exception of URL's, which are supported also.
 + `channel`, and `func` types are NOT supported
-+ `slice` is supported
++ `slice` is supported, with the same limitations applied to its element type.
 + `map` is not yet supported (As I think json encoder will do the same thing?)
 + all the base types, float, int, bool and string are supported.
 
@@ -97,7 +105,7 @@ No command line tool would be complete without a help system to describe the com
 Following the concept of no boiler plate code, mainline generates the help system for you by using the comments of the functions it is calling into as the help text for the command mapped to that function.  
 This removes the need to maintain a second set of documentation for a command set and utilises existing resources.  
 Mainline uses `go doc` to locate and read the comments of the functions and builds a help system from that text.  
-To use the help, the developer runs a build tools called `helpmaker` in the directory of their source code.  helpmaker will generate a new function named `HelpCommand` which the developer can then map into with:  
+To use the help, the developer runs a build tool called `helpmaker` in the directory of their source code.  helpmaker will generate a new function named `HelpCommand` which the developer can then map into with:  
 `mainline.AddCommand("help", _help.HelpCommand)`
 
 
@@ -125,9 +133,8 @@ Also provide tokens for std.out and in.
 
 Add sub commands.  
 mapping commands in a path form:  
-`
-mainline.AddCommand("basecmd", blabla.Bla)  
-mainline.AddCommand("basecmd/subone", blabla.Bling)  
-mainline.AddCommand("basecmd/subtwo", rahrah.Rah)  
-mainline.AddCommand("basecmd/subtwo/grandsubone", rahrah.Bla)  
-`
+
+`mainline.AddCommand("basecmd", blabla.Bla)`  
+`mainline.AddCommand("basecmd/subone", blabla.Bling)`  
+`mainline.AddCommand("basecmd/subtwo", rahrah.Rah)`  
+`mainline.AddCommand("basecmd/subtwo/grandsubone", rahrah.Bla)`  
