@@ -96,7 +96,7 @@ The result is a clean, simple interface, which offers a powerfull way to build s
 No command line tool would be complete without a help system to describe the commands and their parameters and flags.  
 Following the concept of no boiler plate code, mainline generates the help system for you by using the comments of the functions it is calling into as the help text for the command mapped to that function.  
 This removes the need to maintain a second set of documentation for a command set and utilises existing resources.  
-Provided the source is available for all functions being called, mainline uses `go doc` to locate and read the comments of the functions and builds a help system from that text.  
+Mainline uses `go doc` to locate and read the comments of the functions and builds a help system from that text.  
 To use the help, the developer runs a build tools called `helpmaker` in the directory of their source code.  helpmaker will generate a new function named `HelpCommand` which the developer can then map into with:  
 `mainline.AddCommand("help", _help.HelpCommand)`
 
