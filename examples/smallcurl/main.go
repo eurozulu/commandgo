@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/eurozulu/mainline"
+	"github.com/eurozulu/mainline/examples/smallcurl/_help"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,10 +15,13 @@ import (
 )
 
 type SmallCurl struct {
+	// Header, when true, displays the response headers at the end of the body
 	Header bool `flag:"header,i"`
+	// Nobody, when true, will NOT return the body stream.  Used with Header to get just headers, or on its own gets response code.
 	Nobody bool
 }
 
+// Get performs a http GET on the given url, returning the BODY
 func (sc SmallCurl) Get(u *url.URL) (string, error) {
 	r, err := http.Get(u.String())
 	if err != nil {
@@ -49,5 +53,6 @@ func (sc SmallCurl) Get(u *url.URL) (string, error) {
 
 func main() {
 	mainline.AddCommand("get", SmallCurl.Get)
+	mainline.MustAddCommand("help", _help.HelpCommand)
 	mainline.RunCommandLine()
 }
