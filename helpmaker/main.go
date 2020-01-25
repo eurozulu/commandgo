@@ -5,15 +5,13 @@ import (
 )
 
 func main() {
-	if err := helper.GenHelp(); err != nil {
+	by, err := helper.GenHelp()
+	if err != nil {
 		panic(err)
 	}
 
-	if err := helper.GenCode(); err != nil {
+	if err := helper.GenCode(by); err != nil {
 		panic(err)
 	}
 
-	if err := helper.CleanJson(); err != nil {
-		panic(err)
-	}
 }

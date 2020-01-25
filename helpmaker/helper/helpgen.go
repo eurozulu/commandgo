@@ -7,10 +7,7 @@ import (
 	"fmt"
 	"github.com/eurozulu/mainline"
 	"io"
-	"io/ioutil"
-	"os"
 	"os/exec"
-	"path"
 	"strings"
 )
 
@@ -28,29 +25,12 @@ type CommandDetails struct {
 	HelpText   string `json:"helptext"`
 }
 
-func GenHelp() error {
-	p, _ := os.Getwd()
-	hd := path.Join(p, helpdir)
-
-	// Clean out existing
-	if err := os.RemoveAll(hd); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(hd, 0755); err != nil {
-		return err
-	}
-
+func GenHelp() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	if err := readJsonHelp(buf); err != nil {
-		return err
+		return nil, err
 	}
-	return ioutil.WriteFile(path.Join(hd, helpJSON), buf.Bytes(), 0644)
-}
-
-func CleanJson() error {
-	p, _ := os.Getwd()
-	hd := path.Join(p, helpdir, helpJSON)
-	return os.RemoveAll(hd)
+	return buf.Bytes(), nil
 }
 
 func readJsonHelp(out io.Writer) error {
@@ -86,7 +66,7 @@ func findMappedCommands(cmd string) MappedCommands {
 	mappings := make(MappedCommands)
 
 	for scn.Scan() {
-		ln := scn.Text()
+		ln := strings.TrimSpace(scn.Text())
 		if ln == "" || strings.HasPrefix(ln, "//") {
 			continue
 		}
