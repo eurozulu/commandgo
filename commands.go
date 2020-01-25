@@ -9,8 +9,10 @@ import (
 	"strings"
 )
 
+type Commands map[string]Command
+
 // commands is a slice of all the registered commands.
-var commands map[string]Command
+var commands Commands
 
 // MustAddCommand Adds a new command and panics if there is an error.
 func MustAddCommand(name string, cmd interface{}) {
@@ -34,7 +36,7 @@ func AddCommand(name string, fun interface{}) error {
 		return fmt.Errorf("command %s must map to a func type, not a %s", name, fv.Kind().String())
 	}
 
-	fName := FuncName(fun)
+	fName := FuncNameFull(fun)
 	fn := FuncCommand{
 		name:      fName,
 		function:  fv,
@@ -175,7 +177,19 @@ func baseName(n string) string {
 	return bName[len(bName)-1]
 }
 
-func FuncName(f interface{}) string {
-	s := strings.Split(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), ".")
+func FuncNameFull(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
+func FuncNamePackage(i interface{}) string {
+	s := strings.Split(FuncNameFull(i), "/")
+	if len(s) == 0 {
+		return ""
+	}
+	return s[len(s)-1]
+}
+
+func FuncName(i interface{}) string {
+	s := strings.Split(FuncNameFull(i), ".")
 	return s[len(s)-1]
 }
