@@ -126,8 +126,8 @@ Also provide tokens for std.out and in.
 Add sub commands.  
 mapping commands in a path form:  
 `
-mainline.AddCommand("basecmd", blabla.Bla)
-mainline.AddCommand("basecmd/subone", blabla.Bling)
-mainline.AddCommand("basecmd/subtwo", rahrah.Rah)
-mainline.AddCommand("basecmd/subtwo/grandsubone", rahrah.Bla)
+mainline.AddCommand("basecmd", blabla.Bla)  
+mainline.AddCommand("basecmd/subone", blabla.Bling)  
+mainline.AddCommand("basecmd/subtwo", rahrah.Rah)  
+mainline.AddCommand("basecmd/subtwo/grandsubone", rahrah.Bla)  
 `
