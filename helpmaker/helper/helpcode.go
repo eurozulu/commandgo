@@ -18,14 +18,13 @@ type commandDetails struct {
 
 // Help displays the available commands and a short description of what they do.
 func HelpCommand(arg string) string {
-
 	var m map[string]*commandDetails
 	if err := json.Unmarshal([]byte(helpData), &m); err != nil {
 		panic(err)
 	}
 	buf := bytes.NewBuffer(nil)
 	for k, v := range m {
-		if arg == "" || arg == k {
+		if arg == "-" || arg == k {
 			fmt.Fprintf(buf, "%s\t%s\t\t%s\n\n", k, v.Parameters, v.HelpText)
 		}
 	}
