@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package mainline
+package argdecode
 
 import (
 	"encoding"
@@ -28,6 +28,34 @@ import (
 
 var SliceDelimiter = ","
 var TimeFormat = time.RFC3339
+
+
+func IsMethod(fun reflect.Value) bool {
+	// is it a func
+	if fun.Type().Kind() != reflect.Func {
+		return false
+	}
+	// does it have at least one param
+	if fun.Type().NumIn() < 1 {
+		return false
+	}
+	// Is that first param a struct, with methods
+	p1t := fun.Type().In(0)
+	if p1t.Kind() != reflect.Struct {
+		return false
+	}
+	if p1t.NumMethod() == 0 {
+		return false
+	}
+	// Scan methods of possible parent sturct, looking for same func.
+	for i := 0; i < p1t.NumMethod(); i ++ {
+		mtd := p1t.Method(i)
+		if mtd.Func.Pointer() == fun.Pointer() {
+			return true
+		}
+	}
+	return false
+}
 
 // Parse the given strings into values of the given types.
 // The length of both slices must be equal, with the type for the first string being the first type and so on.
@@ -168,6 +196,15 @@ func floatFromString(s string, t reflect.Type) (interface{}, error) {
 }
 
 func intFromString(s string, t reflect.Type) (interface{}, error) {
+	// Special cases
+	if t == reflect.TypeOf(time.Duration(0)) {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
+		}
+		return &d, nil
+	}
+
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())

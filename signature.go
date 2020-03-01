@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package mainline
+package argdecode
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ import (
 	"reflect"
 )
 
-// Signature represents the signature of a method, both its parameters and its return types.
+// Signature represents the signature of a method or func, both its parameters and its return types.
 type Signature struct {
 	ParamTypes  []reflect.Type
 	ReturnTypes []reflect.Type
@@ -47,12 +47,12 @@ func (s Signature) listTypes(t []reflect.Type) string {
 }
 
 // NewSignature creates a new signature from the given method value
+// isMethod should be true for methods, to ignore the leading param type of its parent struct.
 func NewSignature(t reflect.Type, isMethod bool) Signature {
 	start := 0
 	if isMethod {
 		start++
 	}
-
 	params := make([]reflect.Type, t.NumIn()-start)
 	x := 0
 	for i := start; i < t.NumIn(); i++ {
