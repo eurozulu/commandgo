@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package argdecode
+package mainline
 
 import (
 	"bytes"

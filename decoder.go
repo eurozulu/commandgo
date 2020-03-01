@@ -1,4 +1,4 @@
-package argdecode
+package mainline
 
 import (
 	"fmt"
@@ -10,11 +10,15 @@ import (
 
 const tagFlag = "flag"
 const tagCommand = "command"
+const tagParams = "paramters"
 
+// Decoder decodes command line arguments into objects
 type Decoder struct {
 	Args []string
 }
 
+// Decode the arguments into the given object.
+// Arguments are parsed according to the structure of the object and its types.
 func (d Decoder) Decode(v interface{}) error {
 	val := reflect.ValueOf(v)
 	if val.Kind() != reflect.Ptr {
@@ -37,12 +41,12 @@ func (d Decoder) Decode(v interface{}) error {
 
 func (d *Decoder) unmarshal(val reflect.Value) error {
 	var unnamed []string
+
 	for i := 0; i < len(d.Args); i++ {
 		if !strings.HasPrefix(d.Args[i], "-") && d.Args[i] != "-" {
 			unnamed = append(unnamed, d.Args[i])
 			continue
 		}
-
 		// Locate field in struct of the flag name
 		arg := strings.TrimLeft(d.Args[i], "-")
 		fld := findFieldByName(arg, val, tagFlag)
@@ -82,9 +86,7 @@ func (d *Decoder) unmarshal(val reflect.Value) error {
 	cmdft := findFieldByName(unnamed[0], val, tagCommand)
 	if cmdft != nil {
 		logger.Debug("command %d mapped to function", unnamed[0])
-		if err := callCommandFunc(cmdft, val, unnamed); err != nil {
-			return err
-		}
+		return callCommandFunc(cmdft, val, unnamed)
 	}
 
 	return nil

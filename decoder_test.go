@@ -1,8 +1,8 @@
-package argdecode_test
+package mainline_test
 
 import (
 	"fmt"
-	"github.com/eurozulu/argdecode"
+	"github.com/eurozulu/mainline"
 	"net/url"
 	"strings"
 	"testing"
@@ -37,15 +37,20 @@ func (c CommandFuncTest) RunThisCommand(bla string, d time.Duration) {
 	fmt.Printf("bla %s for a duration of %v", bla, d)
 }
 
-func RunThamCommand(args ...string) {
+func RunThatCommand(args ...string) {
 	fmt.Printf("%d arguments:  %v", len(args), args)
 }
 
 func TestDecoder_CommandFunc(t *testing.T) {
 	st := CommandFuncTest{}
 	st.Command = st.RunThisCommand
+	st.Command2 = RunThatCommand
 
-	if err := argdecode.NewDecoder([]string{"-bool", "--str", "24h", "-int", "42", "runthis"}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{"-bool", "--str", "24h", "-int", "42", "runthis bla 24m"}).Decode(&st); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mainline.NewDecoder([]string{"-bool", "--str", "24h", "-int", "42", "runthat"}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -53,7 +58,7 @@ func TestDecoder_CommandFunc(t *testing.T) {
 
 func TestDecoder_FieldTags(t *testing.T) {
 	st := ComplexFieldTest{}
-	if err := argdecode.NewDecoder([]string{"-d", "24h", "--t", "2006-01-02T15:04:05Z"}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{"-d", "24h", "--t", "2006-01-02T15:04:05Z"}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if st.DurationFlag == 0 {
@@ -63,7 +68,7 @@ func TestDecoder_FieldTags(t *testing.T) {
 		t.Fatalf("Expected time set but found zero time using tag names")
 	}
 
-	if err := argdecode.NewDecoder([]string{"-duration", "24h", "--time", "2006-01-02T15:04:05Z"}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{"-duration", "24h", "--time", "2006-01-02T15:04:05Z"}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if st.DurationFlag == 0 {
@@ -78,11 +83,11 @@ func TestDecoder_FieldTags(t *testing.T) {
 func TestDecoder_BadArgs(t *testing.T) {
 	st := SingleFieldTest{}
 	// empty should pass OK
-	if err := argdecode.NewDecoder([]string{}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 
-	err := argdecode.NewDecoder([]string{"--abadbadflag", "and its bad bad value"}).Decode(&st)
+	err := mainline.NewDecoder([]string{"--abadbadflag", "and its bad bad value"}).Decode(&st)
 	if err == nil {
 		t.Fatal(fmt.Errorf("Expected err passing unknown flag"))
 	}
@@ -94,14 +99,14 @@ func TestDecoder_BadArgs(t *testing.T) {
 
 func TestDecoder_DecodeSingleField(t *testing.T) {
 	st := SingleFieldTest{}
-	if err := argdecode.NewDecoder([]string{}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if st.BoolFlag {
 		t.Errorf("expected ampty Args to have false bool, found true")
 	}
 
-	if err := argdecode.NewDecoder([]string{"--boolflag"}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{"--boolflag"}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if !st.BoolFlag {
@@ -111,7 +116,7 @@ func TestDecoder_DecodeSingleField(t *testing.T) {
 
 func TestDecoder_DecodeMultiField(t *testing.T) {
 	st := MultiFieldTest{}
-	if err := argdecode.NewDecoder([]string{}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if st.BoolFlag {
@@ -124,7 +129,7 @@ func TestDecoder_DecodeMultiField(t *testing.T) {
 		t.Errorf("expected empty Args to have empty string, found %s", st.StringFlag)
 	}
 
-	if err := argdecode.NewDecoder([]string{"--boolflag", "--stringflag", "stringvalue", "--intflag", "99"}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{"--boolflag", "--stringflag", "stringvalue", "--intflag", "99"}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if !st.BoolFlag {
@@ -141,7 +146,7 @@ func TestDecoder_DecodeMultiField(t *testing.T) {
 
 func TestDecoder_DecodeComplexField(t *testing.T) {
 	st := ComplexFieldTest{}
-	if err := argdecode.NewDecoder([]string{}).Decode(&st); err != nil {
+	if err := mainline.NewDecoder([]string{}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}
 	if st.DurationFlag != 0 {
@@ -154,7 +159,7 @@ func TestDecoder_DecodeComplexField(t *testing.T) {
 		t.Errorf("expected empty Args to have nil URL, found %v", st.URLFlag)
 	}
 
-	if err := argdecode.NewDecoder([]string{
+	if err := mainline.NewDecoder([]string{
 		"--durationflag", "30h", "-timeflag", "2006-01-02T15:04:05Z", "--urlflag", "http://www.spoofer.org/haha?one=1"}).Decode(&st); err != nil {
 		t.Fatal(err)
 	}

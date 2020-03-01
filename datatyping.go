@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package argdecode
+package mainline
 
 import (
 	"encoding"
@@ -28,7 +28,6 @@ import (
 
 var SliceDelimiter = ","
 var TimeFormat = time.RFC3339
-
 
 func IsMethod(fun reflect.Value) bool {
 	// is it a func
@@ -48,7 +47,7 @@ func IsMethod(fun reflect.Value) bool {
 		return false
 	}
 	// Scan methods of possible parent sturct, looking for same func.
-	for i := 0; i < p1t.NumMethod(); i ++ {
+	for i := 0; i < p1t.NumMethod(); i++ {
 		mtd := p1t.Method(i)
 		if mtd.Func.Pointer() == fun.Pointer() {
 			return true
