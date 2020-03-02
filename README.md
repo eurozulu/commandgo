@@ -1,52 +1,52 @@
 # Mainline
 ### Command line arguments object mapper  
   
-  
-Library for developing command line based tools requiring the parsing of command line flags and command.  
-  
-Maps named flags into structure fields, coercing the string arguments into their respective data types in the fields using go reflection.
-  
-  
+Emulates the decoder package by 'decoding' / Unmarshalling the cmd line arguments into a generic struct.  
+Maps named flags into structure fields, coercing the string arguments into their respective data types using go reflection.  
+    
  
-#### Usage
-Create a struct which contains all the argument flags you require for your application.
-This struct acts like a configuration object, containing the properties as they are set by the command line.  
-e.g. If we have three flags:  
-- name  A string name
-- timeout  A duration
-- debug  A bool flag  
+##### Usage
+To parse an example command line:  
+`... --name john -timeout 24h -d param1 param2 param3`
+
+Create a struct containing fields for the named argument flags required.
+e.g. We have three named flags:    
+* name  string
+* timeout time.Duration
+* debug  bool  
+  
+and an expected unnamed parameters 'param1', 'param2', 'param3'  
   
 We could create a struct:
 ```
-type MyAppConfig struct {  
-   Name  string  
-   Timeout  time.Duration
-   Debug    bool  
+type MyArgs struct {  
+    Name    string  
+    Timeout time.Duration   `flag:"t"`
+    Debug   bool            `flag:"d"`
+    Params  []string        `flag:"*"`
 }
 ```
-
-
-Then in the application `main()` the arguments are parsed:  
+Once decoded, the MyArgs instance will have the arguments mapped
+to the fields, with the Params slice containing the 'param1', 'param2'...
+  
+To decode the struct, in the application `main()`:  
 ```
 func main() {
-    var cfg MyAppConfig
-    if err := mainline.NewDecoder(os.Args[1:]).Decode(&cfg); err != nil {
+    var args MyArgs
+    err := mainline.NewDecoder(os.Args[1:]).Decode(&args)
+    if err != nil {
     	t.Fatal(err)
     }
     
-    // Then cfg is ready to use...
-    ctx, cnl := context.WithTimeout(context.Background(), cfg.Timeout)
+    // That's it!, args is ready to use... e.g.
+    ctx, cnl := context.WithTimeout(context.Background(), args.Timeout)
     ...
-    if cfg.Debug {
+    if args.Debug {
         log.Loglevel(log.Debug)
     }
-    fmt.Printf("Hello %s", cfg.Name)
+    fmt.Printf("Hello %s", args.Name)
 }   
 ```
-  
-  
-Using the command line flags:
-`yourapp --name john --timeout 3h --debug`  
   
 Flags can appear in any order.  All flags, with the exception of bool types must have a following argument as its value.  
 This value is converted to the relevant data type for the Field.
@@ -62,7 +62,7 @@ certain structs are supported:
 
 
 ####Tags
-Fields may be tagged to to specify alternative names for the flag using standard go tagging.
+Fields may be tagged to specify alternative names for the flag using standard go tagging.
 e.g.  
 ```
 type MyAppConfig struct {  
@@ -76,5 +76,21 @@ Using these flags, the `Name` field could be set with any of the following comma
 + -n john
 + -nom "alice cooper"
 
-There is no distiction beween the double dash and single dash for flags.  "-" is the same as "--"  
+Tagging a field with a '-' `flag:"-"` will hide that field from the argument parsing.
+
+Command func(args ...string)  `command:"dothis"`
+
+There is no distiction between the double dash and single dash for flags.  "-" is the same as "--"  
  
+####Unnamed arguments
+All arguments which are not flags or values of flags are classed as unnamed arguments or parameters.  
+`... --no novalue unnamed1 -v unnamed2 unnamed3`  
+In this example there are 3 unnamed values, (Assuming -v maps to a bool)  
+  
+Once all flags and their values are removed from the command line, the remaining, unnamed arguments may be mapped to a field
+using the flag tag with a "*" name.  e.g. to map the unnamed to MyCmdArgs:  
+``` MyCmdArgs []string  `flag:"*"` ```  
+In this example, `MyCmdArgs` would contain the three values:  unnamed1, unnamed2, unnamed3  
+  
+  
+

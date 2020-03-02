@@ -2,15 +2,10 @@ package mainline
 
 import (
 	"fmt"
-	"github.com/eurozulu/flinger/logger"
 	"reflect"
 	"strconv"
 	"strings"
 )
-
-const tagFlag = "flag"
-const tagCommand = "command"
-const tagParams = "paramters"
 
 // Decoder decodes command line arguments into objects
 type Decoder struct {
@@ -41,7 +36,6 @@ func (d Decoder) Decode(v interface{}) error {
 
 func (d *Decoder) unmarshal(val reflect.Value) error {
 	var unnamed []string
-
 	for i := 0; i < len(d.Args); i++ {
 		if !strings.HasPrefix(d.Args[i], "-") && d.Args[i] != "-" {
 			unnamed = append(unnamed, d.Args[i])
@@ -78,93 +72,25 @@ func (d *Decoder) unmarshal(val reflect.Value) error {
 		}
 	}
 
+	// process the unnamed 'parameters', assign to flag marked'*'
+	argft := findFieldByName("*", val, tagFlag)
 	if len(unnamed) == 0 {
-		return nil
-	}
-
-	// Check if any field is taged as 'command' matching first unnamed
-	cmdft := findFieldByName(unnamed[0], val, tagCommand)
-	if cmdft != nil {
-		logger.Debug("command %d mapped to function", unnamed[0])
-		return callCommandFunc(cmdft, val, unnamed)
-	}
-
-	return nil
-}
-
-// callCommandFunc calls the function which is the value of the cmdfld, using the given args.
-// Args are translated into the correct types for the call.
-func callCommandFunc(cmdfld *reflect.StructField, val reflect.Value, args []string) error {
-	cmdfv := val.FieldByName(cmdfld.Name)
-	if cmdfv.IsNil() {
-		return fmt.Errorf("ignoring command %s as no function has been set for that command", args[0])
-	}
-
-	if cmdfv.Type().Kind() != reflect.Func {
-		return fmt.Errorf("failed to start %s as Field %s is not a function", args[0], cmdfld.Name)
-	}
-	isMth := IsMethod(cmdfv)
-	sig := NewSignature(cmdfv.Type(), isMth)
-	if len(sig.ParamTypes) != (len(args) - 1) {
-		return fmt.Errorf("%s requires %d arguments.  Found %d", args[0], len(sig.ParamTypes), len(args)-1)
-	}
-
-	iVals, err := ValuesFromString(args, sig.ParamTypes)
-	if err != nil {
-		return fmt.Errorf("failed to read arguments for %s  %v", args[0], err)
-	}
-	vals := make([]reflect.Value, len(iVals))
-	for i, iv := range iVals {
-		vals[i] = reflect.ValueOf(iv)
-	}
-	val.FieldByName(cmdfld.Name).Elem().Call(vals)
-	return nil
-}
-
-// findFieldByName scans each field in the given struct for either its fieldname or one of its 'flag' tag names, for the given name.
-func findFieldByName(name string, str reflect.Value, tagName string) *reflect.StructField {
-	for i := 0; i < str.NumField(); i++ {
-		fld := str.Type().Field(i)
-		names := fieldNames(fld, tagName)
-		for _, n := range names {
-			if strings.EqualFold(name, n) {
-				return &fld
-			}
+		if argft == nil {
+			return nil
 		}
+		return fmt.Errorf("expected arguments for %s", argft.Name)
 	}
-	return nil
-}
+	if argft == nil {
+		return fmt.Errorf("unexpected arguments %v", unnamed)
+	}
 
-// Gets the names of the given field. Includes the field name and any comma separated names found in the given tag.
-func fieldNames(fd reflect.StructField, tagName string) []string {
-	var names = []string{fd.Name}
-	tag, ok := fd.Tag.Lookup(tagName)
-	if !ok { // no tag, just the field name
-		return names
+	args := strings.Join(unnamed, SliceDelimiter)
+	v, err := ValueFromString(args, argft.Type)
+	if err != nil {
+		return fmt.Errorf("failed to parse arguments %v", err)
 	}
-	if tag == "-" { // ignore those taged with dash
-		return nil
-	}
-	for _, tn := range strings.Split(tag, ",") {
-		names = append(names, strings.TrimSpace(tn))
-	}
-	return names
-}
-
-// Sets the given field value, the given value.
-// Assigns the value or a pointer to it, depending on the field type
-func setFieldValue(fld reflect.Value, val interface{}) error {
-	var vp reflect.Value
-	v := reflect.ValueOf(val)
-	if v.Type().Kind() == reflect.Ptr {
-		vp = v
-		v = v.Elem()
-	}
-	// Assign field value.  Check if receiver is expecting a pointer or not.
-	if fld.Type().Kind() == reflect.Ptr {
-		fld.Set(vp)
-	} else {
-		fld.Set(v)
+	if err := setFieldValue(val.FieldByName(argft.Name), v); err != nil {
+		return fmt.Errorf("failed to assign arguments %v to field %s  %v", v, argft.Name, err)
 	}
 	return nil
 }

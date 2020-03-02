@@ -29,33 +29,6 @@ import (
 var SliceDelimiter = ","
 var TimeFormat = time.RFC3339
 
-func IsMethod(fun reflect.Value) bool {
-	// is it a func
-	if fun.Type().Kind() != reflect.Func {
-		return false
-	}
-	// does it have at least one param
-	if fun.Type().NumIn() < 1 {
-		return false
-	}
-	// Is that first param a struct, with methods
-	p1t := fun.Type().In(0)
-	if p1t.Kind() != reflect.Struct {
-		return false
-	}
-	if p1t.NumMethod() == 0 {
-		return false
-	}
-	// Scan methods of possible parent sturct, looking for same func.
-	for i := 0; i < p1t.NumMethod(); i++ {
-		mtd := p1t.Method(i)
-		if mtd.Func.Pointer() == fun.Pointer() {
-			return true
-		}
-	}
-	return false
-}
-
 // Parse the given strings into values of the given types.
 // The length of both slices must be equal, with the type for the first string being the first type and so on.
 func ValuesFromString(v []string, types []reflect.Type) ([]interface{}, error) {
@@ -169,7 +142,7 @@ func structureFromString(s string, t reflect.Type) (interface{}, error) {
 
 func sliceFromString(s string, t reflect.Type) (interface{}, error) {
 	ss := strings.Split(s, SliceDelimiter)
-	sv := reflect.MakeSlice(t.Elem(), 0, len(ss))
+	sv := reflect.MakeSlice(t, 0, len(ss))
 	for _, sa := range ss {
 		sav, err := ValueFromString(sa, t.Elem())
 		if err != nil {

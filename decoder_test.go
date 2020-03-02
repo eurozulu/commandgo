@@ -25,37 +25,6 @@ type ComplexFieldTest struct {
 	URLFlag      *url.URL      `flag:"url, u"`
 }
 
-type CommandFuncTest struct {
-	BoolFlag   bool                        `flag:"bool"`
-	StringFlag string                      `flag:"str"`
-	IntFlag    int                         `flag:"int"`
-	Command    func(string, time.Duration) `command:"runthis"`
-	Command2   func(...string)             `command:"runthat"`
-}
-
-func (c CommandFuncTest) RunThisCommand(bla string, d time.Duration) {
-	fmt.Printf("bla %s for a duration of %v", bla, d)
-}
-
-func RunThatCommand(args ...string) {
-	fmt.Printf("%d arguments:  %v", len(args), args)
-}
-
-func TestDecoder_CommandFunc(t *testing.T) {
-	st := CommandFuncTest{}
-	st.Command = st.RunThisCommand
-	st.Command2 = RunThatCommand
-
-	if err := mainline.NewDecoder([]string{"-bool", "--str", "24h", "-int", "42", "runthis bla 24m"}).Decode(&st); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := mainline.NewDecoder([]string{"-bool", "--str", "24h", "-int", "42", "runthat"}).Decode(&st); err != nil {
-		t.Fatal(err)
-	}
-
-}
-
 func TestDecoder_FieldTags(t *testing.T) {
 	st := ComplexFieldTest{}
 	if err := mainline.NewDecoder([]string{"-d", "24h", "--t", "2006-01-02T15:04:05Z"}).Decode(&st); err != nil {
@@ -177,4 +146,38 @@ func TestDecoder_DecodeComplexField(t *testing.T) {
 	}
 
 	fmt.Println(st.TimeFlag)
+}
+
+func TestDecoder_Command(t *testing.T) {
+	// test with struct with NO flag:* defined, with args given
+	st := SingleFieldTest{}
+	err := mainline.NewDecoder([]string{"-boolflag", "runthis bla 24m"}).Decode(&st)
+	if err == nil {
+		t.Fatal(fmt.Errorf("Expected error for unexpected arguments"))
+	}
+	if !strings.Contains(err.Error(), "unexpected") {
+		t.Fatalf("expected error of 'unexpected arguments, found %v", err)
+	}
+
+	ct := CommandTest{}
+	if err := mainline.NewDecoder([]string{"runthat", "-bool", "thatparam"}).Decode(&ct); err != nil {
+		t.Fatal(err)
+	}
+	if len(ct.Args) != 2 {
+		t.Fatalf("expected arguments length of 2, found %d", len(ct.Args))
+	}
+	if ct.Args[0] != "runthat" {
+		t.Fatalf("expected first argument to be 'runthat', found %s", ct.Args[0])
+	}
+	if ct.Args[1] != "thatparam" {
+		t.Fatalf("expected second argument to be 'thatparam', found %s", ct.Args[1])
+	}
+
+}
+
+type CommandTest struct {
+	BoolFlag   bool     `flag:"bool"`
+	StringFlag string   `flag:"str"`
+	IntFlag    int      `flag:"int"`
+	Args       []string `flag:"*"`
 }
