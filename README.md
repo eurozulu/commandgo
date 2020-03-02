@@ -61,12 +61,12 @@ certain structs are supported:
 + Date, Duration and url.URL
 
 
-####Tags
+#### Tags
 Fields may be tagged to specify alternative names for the flag using standard go tagging.
 e.g.  
 ```
 type MyAppConfig struct {  
-   Name     string           `flag:"nom", "naam", "n"`  
+   Name     string           `flag:"nom, naam, n"`  
    Timeout  time.Duration    `flag:"t"`
    Debug    bool             `flag:"db"`
 }
@@ -74,15 +74,13 @@ type MyAppConfig struct {
 Using these flags, the `Name` field could be set with any of the following command line argiments:  
 + --name john
 + -n john
-+ -nom "alice cooper"
++ -nom "alice cooper"  
 
 Tagging a field with a '-' `flag:"-"` will hide that field from the argument parsing.
-
-Command func(args ...string)  `command:"dothis"`
-
+  
 There is no distiction between the double dash and single dash for flags.  "-" is the same as "--"  
- 
-####Unnamed arguments
+   
+#### Unnamed arguments
 All arguments which are not flags or values of flags are classed as unnamed arguments or parameters.  
 `... --no novalue unnamed1 -v unnamed2 unnamed3`  
 In this example there are 3 unnamed values, (Assuming -v maps to a bool)  
