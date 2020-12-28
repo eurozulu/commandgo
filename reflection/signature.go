@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package mainline
+package reflection
 
 import (
 	"bytes"
@@ -25,6 +25,7 @@ import (
 type Signature struct {
 	ParamTypes  []reflect.Type
 	ReturnTypes []reflect.Type
+	IsVariadic  bool
 }
 
 func (s Signature) String() string {
@@ -46,26 +47,37 @@ func (s Signature) listTypes(t []reflect.Type) string {
 	return fmt.Sprintf("[%s]", bf.String())
 }
 
-// NewSignature creates a new signature from the given method value
-// isMethod should be true for methods, to ignore the leading param type of its parent struct.
-func NewSignature(t reflect.Type, isMethod bool) Signature {
-	start := 0
-	if isMethod {
-		start++
-	}
-	params := make([]reflect.Type, t.NumIn()-start)
-	x := 0
-	for i := start; i < t.NumIn(); i++ {
-		params[x] = t.In(i)
-		x++
+// NewSignatureOf creates a Signature of the given func or Method
+func NewSignatureOf(fun interface{}) (*Signature, error) {
+	var t reflect.Type
+	m, ok := fun.(reflect.Method)
+	if ok {
+		t = m.Type
+
+	} else { // not a method, see if its a func
+		t = reflect.TypeOf(fun)
+		if t.Kind() != reflect.Func {
+			return nil, fmt.Errorf("fun %s is not a method or func", t.Name())
+		}
 	}
 
-	returns := make([]reflect.Type, t.NumOut())
-	for i := 0; i < t.NumOut(); i++ {
+	var index int
+	if ok { // if method, move pased first param
+		index++
+	}
+	in := t.NumIn()
+	var params []reflect.Type
+	for ; index < in; index++ {
+		params = append(params, t.In(index))
+	}
+	out := t.NumOut()
+	returns := make([]reflect.Type, out)
+	for i := 0; i < out; i++ {
 		returns[i] = t.Out(i)
 	}
-	return Signature{
+	return &Signature{
 		ParamTypes:  params,
 		ReturnTypes: returns,
-	}
+		IsVariadic:  t.IsVariadic(),
+	}, nil
 }

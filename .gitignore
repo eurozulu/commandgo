@@ -6,3 +6,4 @@
 config.json
 testdir
 env_deploy.env
+/bin/

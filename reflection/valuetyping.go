@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package mainline
+package reflection
 
 import (
 	"encoding"
