@@ -15,20 +15,19 @@ type Commands map[string]interface{}
 
 // Run attempts to call the mapped method, using the first given argument as the key to the command map.
 // If the given key is found, the remaining arguments are parsed into flags and parameters before the mapped method is called.
-// returns the return values of the method or an error if the method can not be called or the method returns an error
-func (cmds Commands) Run(args ...string) ([]interface{}, error) {
+func (cmds Commands) Run(args ...string) error {
 	// strip leading arg if it's program name
 	if len(args) > 0 && args[0] == os.Args[0] {
 		args = args[1:]
 	}
 	if len(args) == 0 {
 		cmds.ShowCommands()
-		return nil, nil
+		return nil
 	}
 
 	cmd, err := cmds.findCommand(args[0])
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// call with args, less the initial command
@@ -60,45 +59,38 @@ func (cmds Commands) ShowCommands() {
 
 // callCommand parses the given arguments into flags and parameters for the cmdObject's method, then calls that methed using the parsed data
 // Flag values are assigned to mapped Fields in the given command object prior to the call.
-func (cmds Commands) callCommand(cmd *command, args ...string) ([]interface{}, error) {
+func (cmds Commands) callCommand(cmd *command, args ...string) error {
 	// Get a value of the struct
 	val := reflect.ValueOf(cmd.cmdObject)
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("non-struct pointer passed to callCommand")
+		return fmt.Errorf("non-struct pointer passed to callCommand")
 	}
 
 	// parse args for flags and assign to struct fields
 	params, err := parseFlags(val, args)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// using remaining args, parse into parameters for the cmdObject method.
 	inParams, err := parseParameters(*cmd.method, params)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	outVals := val.MethodByName(cmd.method.Name).Call(inParams)
 
-	// flip out values into interface slice and check if an error returned
-	var outi []interface{}
+	// check if an error returned
 	errInterface := reflect.TypeOf((*error)(nil)).Elem()
 	for _, ov := range outVals {
-		if (ov.Kind() == reflect.Ptr || ov.Kind() == reflect.Interface) && ov.IsNil() {
+		if (ov.Kind() != reflect.Interface) || ov.IsNil() {
 			continue
 		}
-		t := ov.Type()
-		if t.Kind() == reflect.Interface {
-			if t.Implements(errInterface) {
-				return nil, ov.Interface().(error)
-			}
-			outi = append(outi, ov.Elem())
-			continue
+		if ov.Type().Implements(errInterface) {
+			return ov.Interface().(error)
 		}
-		outi = append(outi, ov.Interface())
 	}
-	return outi, nil
+	return nil
 }
 
 func (cmds Commands) findCommand(arg string) (*command, error) {

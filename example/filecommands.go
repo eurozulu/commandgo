@@ -27,6 +27,24 @@ func (cl FileCommands) ListFiles(p string) error {
 	return nil
 }
 
+func (cl FileCommands) ListDirectory(p string) error {
+	fmt.Printf("listing directories for %s ", p)
+	if cl.Recursive {
+		fmt.Print("recursively")
+	}
+	fmt.Println()
+
+	names, err := cl.listPath(path.Join(cl.root, p), false, true)
+	if err != nil {
+		return err
+	}
+	for _, n := range names {
+		fmt.Println(n)
+	}
+	fmt.Println()
+	return nil
+}
+
 func (cl FileCommands) listPath(p string, f, d bool) ([]string, error) {
 	if !f && !d {
 		return nil, nil
@@ -64,21 +82,4 @@ func (cl FileCommands) listPath(p string, f, d bool) ([]string, error) {
 		names = append(names, n...)
 	}
 	return names, nil
-}
-func (cl FileCommands) ListDirectory(p string) error {
-	fmt.Printf("listing directories for %s ", p)
-	if cl.Recursive {
-		fmt.Print("recursively")
-	}
-	fmt.Println()
-
-	names, err := cl.listPath(path.Join(cl.root, p), false, true)
-	if err != nil {
-		return err
-	}
-	for _, n := range names {
-		fmt.Println(n)
-	}
-	fmt.Println()
-	return nil
 }

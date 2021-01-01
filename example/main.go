@@ -18,11 +18,7 @@ func main() {
 		"listdirectory, ld":          listCmd,
 	}
 
-	out, err := cmds.Run(os.Args...)
-	if err != nil {
+	if err := cmds.Run(os.Args...); err != nil {
 		fmt.Println(err)
-	}
-	for _, o := range out {
-		fmt.Printf("%v\n", o)
 	}
 }

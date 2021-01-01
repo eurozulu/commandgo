@@ -26,10 +26,10 @@ func (sc StringCommands) Reverse(s string) {
 	fmt.Println(b.String())
 }
 
-func (sc StringCommands) Base64Encode(s string) string {
-	return base64.StdEncoding.EncodeToString([]byte(s))
+func (sc StringCommands) Base64Encode(s string) {
+	fmt.Println(base64.StdEncoding.EncodeToString([]byte(s)))
 }
 
-func (cr StringCommands) Square(i1, i2 int) int {
-	return i1 ^ i2
+func (cr StringCommands) Square(i1, i2 int) {
+	fmt.Println(i1 ^ i2)
 }
