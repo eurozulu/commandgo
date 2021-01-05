@@ -199,5 +199,5 @@ func boolFromString(s string, t reflect.Type) (interface{}, error) {
 func stringFromString(s string, t reflect.Type) (interface{}, error) {
 	sv := reflect.New(t)
 	sv.Elem().SetString(s)
-	return sv.Interface(), nil
+	return sv.Elem().Interface(), nil
 }

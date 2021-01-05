@@ -5,7 +5,6 @@ import (
 	"github.com/eurozulu/mainline/reflection"
 	"os"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -20,8 +19,8 @@ func (cmds Commands) Run(args ...string) error {
 	if len(args) > 0 && args[0] == os.Args[0] {
 		args = args[1:]
 	}
-	if len(args) == 0 {
-		cmds.ShowCommands()
+	if len(args) == 0 || args[0] == "help" {
+		ShowCommands(cmds, args...)
 		return nil
 	}
 
@@ -32,29 +31,6 @@ func (cmds Commands) Run(args ...string) error {
 
 	// call with args, less the initial command
 	return cmds.callCommand(cmd, args[1:]...)
-}
-
-// ShowCommands lists all the avilable commands and their aliases
-func (cmds Commands) ShowCommands() {
-	var c []string
-	for k := range cmds {
-		ks := strings.Split(k, ",")
-		s := ks[0]
-		if strings.HasPrefix(s, "-") {
-			if len(ks) < 2 {
-				return
-			}
-			s = ks[1]
-		}
-		if len(ks) > 1 {
-			s = strings.Join([]string{s, fmt.Sprintf("\t\t(%s)", strings.Join(ks[1:], ", "))}, "")
-		}
-		c = append(c, s)
-	}
-	sort.Strings(c)
-	for _, cmd := range c {
-		fmt.Println(cmd)
-	}
 }
 
 // callCommand parses the given arguments into flags and parameters for the cmdObject's method, then calls that methed using the parsed data
@@ -115,14 +91,19 @@ func parseParameters(m reflect.Method, args []string) ([]reflect.Value, error) {
 
 	var vals []reflect.Value
 	for i, pt := range sig.ParamTypes {
-
 		var val interface{}
 		var err error
 		// if last param and variadic, wrap final args into a single array
 		if sig.IsVariadic && i == len(sig.ParamTypes)-1 {
 			if i < len(args) { // optional params provided
-				val, err = reflection.ValueFromString(strings.Join(args[i:], ","), pt)
+				vps, err := variadicParams(args[i:], pt.Elem())
+				if err != nil {
+					return nil, err
+				}
+				vals = append(vals, vps...)
 			}
+			continue
+
 		} else if i < len(args) {
 			val, err = reflection.ValueFromString(args[i], pt)
 		} else {
@@ -131,9 +112,22 @@ func parseParameters(m reflect.Method, args []string) ([]reflect.Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf("argument %d, %v", i, err)
 		}
-		vals = append(vals, reflect.ValueOf(val).Elem())
+		vals = append(vals, reflect.ValueOf(val))
 	}
 	return vals, nil
+}
+
+func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
+	vals := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		val, err := reflection.ValueFromString(arg, t)
+		if err != nil { // failed to parse as correct type, not a match
+			return nil, fmt.Errorf("parameter %v could not be parsed as a %v", arg, t.String())
+		}
+		vals[i] = reflect.ValueOf(val)
+	}
+	return vals, nil
+
 }
 
 // parseFlags parses the given arguments for '-' flags, named values, assigning

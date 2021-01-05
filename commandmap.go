@@ -23,19 +23,22 @@ func newCommandMap(cmds Commands) (commandMap, error) {
 			return nil, fmt.Errorf("config error: command %s.  command struct is nil", k)
 		}
 
-		t := reflect.TypeOf(i)
-		if !isStructPtr(t) {
+		v := reflect.ValueOf(i)
+		if v.Kind() != reflect.Ptr {
 			return nil, fmt.Errorf("config error: command %s.  is not a pointer to a struct", k)
 		}
-		if reflect.ValueOf(i).IsNil() {
-			return nil, fmt.Errorf("config error: command %s.  command struct is nil", k)
+		if v.IsNil() {
+			return nil, fmt.Errorf("config error: command %s.  is not a pointer to a struct", k)
+		}
+		if v.Elem().Kind() != reflect.Struct {
+			return nil, fmt.Errorf("config error: command %s.  is not a pointer to a struct", k)
 		}
 
 		ks := strings.Split(k, ",")
 		mn := strings.TrimLeft(ks[0], "-")
-		m := findMethod(t, mn)
+		m := findMethod(v.Elem().Type(), mn)
 		if m == nil {
-			return nil, fmt.Errorf("config error: command %s. is not known to Command structure %s", mn, t.Name())
+			return nil, fmt.Errorf("config error: command %s. is not known to Command structure %s", mn, v.Type().Name())
 		}
 
 		cmd := command{
@@ -67,11 +70,4 @@ func findMethod(t reflect.Type, name string) *reflect.Method {
 		return &m
 	}
 	return nil
-}
-
-func isStructPtr(t reflect.Type) bool {
-	if t.Kind() != reflect.Ptr {
-		return false
-	}
-	return t.Elem().Kind() == reflect.Struct
 }
