@@ -11,6 +11,7 @@ func main() {
 	listCmd := &FileCommands{root: wd}
 
 	cmds := mainline.Commands{
+		"test":                       &StringCommands{},
 		"reverse":                    &StringCommands{},
 		"square":                     &StringCommands{},
 		"-Base64Encode, encode, enc": &StringCommands{},

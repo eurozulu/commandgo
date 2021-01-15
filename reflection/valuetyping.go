@@ -153,8 +153,14 @@ func sliceFromString(s string, t reflect.Type) (interface{}, error) {
 	return sv.Interface(), nil
 }
 
+// Map is parsed as json
 func mapFromString(s string, t reflect.Type) (interface{}, error) {
-	panic("Maps are not supported yet")
+	pStr := reflect.New(t)
+	err := json.Unmarshal([]byte(s), pStr.Interface())
+	if err != nil {
+		return nil, err
+	}
+	return pStr.Interface(), nil
 }
 
 func floatFromString(s string, t reflect.Type) (interface{}, error) {

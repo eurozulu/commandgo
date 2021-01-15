@@ -9,6 +9,18 @@ import (
 type StringCommands struct {
 	// WrapText -wrap or -w wraps the given string before and after the reversed result.
 	WrapText string `flag:"w,wrap"`
+
+	MapTest map[string]interface{} `flag:"map"`
+}
+
+func (sc StringCommands) Test() {
+	if sc.MapTest == nil {
+		fmt.Println("Map not set")
+		return
+	}
+	for k, v := range sc.MapTest {
+		fmt.Printf("%s = %v", k, v)
+	}
 }
 
 // Reverse the given argument
