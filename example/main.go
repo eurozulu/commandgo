@@ -7,16 +7,16 @@ import (
 )
 
 func main() {
-	wd, _ := os.Getwd()
-	listCmd := &FileCommands{root: wd}
-
 	cmds := mainline.Commands{
-		"test":                       &StringCommands{},
-		"reverse":                    &StringCommands{},
-		"square":                     &StringCommands{},
-		"-Base64Encode, encode, enc": &StringCommands{},
-		"listFiles, lf":              listCmd,
-		"listdirectory, ld":          listCmd,
+		"test":          StringCommands.Test,
+		"reverse":       StringCommands.Reverse,
+		"square":        StringCommands.Square,
+		"Base64Encode":  StringCommands.Base64Encode,
+		"encode":        StringCommands.Base64Encode,
+		"listFiles":     FileCommands.ListFiles,
+		"lf":            FileCommands.ListFiles,
+		"listdirectory": FileCommands.ListDirectory,
+		"ld":            FileCommands.ListDirectory,
 	}
 
 	if err := cmds.Run(os.Args...); err != nil {

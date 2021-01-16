@@ -5,6 +5,7 @@ import (
 	"github.com/eurozulu/mainline/reflection"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -19,42 +20,43 @@ func (cmds Commands) Run(args ...string) error {
 	if len(args) > 0 && args[0] == os.Args[0] {
 		args = args[1:]
 	}
-	if len(args) == 0 || args[0] == "help" {
-		ShowCommands(cmds, args...)
-		return nil
+	if len(args) == 0 {
+		return fmt.Errorf("no command found.  provide a command name or use 'help' to find out more")
 	}
 
-	cmd, err := cmds.findCommand(args[0])
+	// find the mapped command from the first arg
+	cmd := cmds.findCommand(args[0])
+	i, ok := cmds[cmd]
+	if !ok {
+		return fmt.Errorf("'%s' is not a known command", args[0])
+	}
+	args = args[1:]
+
+	// Get type of the struct and method
+	st, err := structFromMethodFunc(i)
+	if err != nil {
+		return fmt.Errorf("Command Configuration Error:  %v", err)
+	}
+	md, err := methodFromMethodFunc(i, st)
 	if err != nil {
 		return err
 	}
 
-	// call with args, less the initial command
-	return cmds.callCommand(cmd, args[1:]...)
-}
-
-// callCommand parses the given arguments into flags and parameters for the cmdObject's method, then calls that methed using the parsed data
-// Flag values are assigned to mapped Fields in the given command object prior to the call.
-func (cmds Commands) callCommand(cmd *command, args ...string) error {
-	// Get a value of the struct
-	val := reflect.ValueOf(cmd.cmdObject)
-	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("non-struct pointer passed to callCommand")
-	}
+	// new instance of struct
+	ns := reflect.New(st)
 
 	// parse args for flags and assign to struct fields
-	params, err := parseFlags(val, args)
+	params, err := parseFlags(ns, args)
 	if err != nil {
 		return err
 	}
 
-	// using remaining args, parse into parameters for the cmdObject method.
-	inParams, err := parseParameters(*cmd.method, params)
+	inParams, err := parseParameters(*md, params)
 	if err != nil {
 		return err
 	}
 
-	outVals := val.MethodByName(cmd.method.Name).Call(inParams)
+	outVals := ns.MethodByName(md.Name).Call(inParams)
 
 	// check if an error returned
 	errInterface := reflect.TypeOf((*error)(nil)).Elem()
@@ -69,16 +71,15 @@ func (cmds Commands) callCommand(cmd *command, args ...string) error {
 	return nil
 }
 
-func (cmds Commands) findCommand(arg string) (*command, error) {
-	cm, err := newCommandMap(cmds)
-	if err != nil {
-		return nil, err
+// findCommand looks through the map keys in non case sensative search
+// returns the case sensative key if found or empty if not present
+func (cmds Commands) findCommand(arg string) string {
+	for k := range cmds {
+		if strings.EqualFold(k, arg) {
+			return k
+		}
 	}
-	c, ok := cm[arg]
-	if !ok || c == nil {
-		return nil, fmt.Errorf("%s is not a known command", arg)
-	}
-	return c, nil
+	return ""
 }
 
 // parseParameters parses the given argument slice of strings into a list of Values of the correct type
@@ -130,7 +131,7 @@ func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 
 }
 
-// parseFlags parses the given arguments for '-' flags, named values, assigning
+// parseFlags parses the given arguments of strings for '-' flags, named values, assigning
 // any named value to a field of the same name (or tagged as that name) in the given value structure.
 func parseFlags(val reflect.Value, args []string) ([]string, error) {
 	var unnamed []string
@@ -188,4 +189,33 @@ func setFlagValue(v string, fld reflect.Value) error {
 		return err
 	}
 	return nil
+}
+
+// structFromMethodFunc establishes the struct Type from the given method.
+// Given mentod must be a Func which is a Method, (First parameter being the owning struct)
+func structFromMethodFunc(i interface{}) (reflect.Type, error) {
+	vt := reflect.TypeOf(i)
+	if vt.Kind() != reflect.Func {
+		return nil, fmt.Errorf("%s is not a method", vt.Name())
+	}
+	if vt.NumIn() < 1 {
+		return nil, fmt.Errorf("%s is not a method", vt.Name())
+	}
+	st := vt.In(0)
+	if st.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("%s is not a method", vt.Name())
+	}
+	return st, nil
+}
+
+// methodFromMethodFunc gets the method on the given struct instance, as named by the given func interface
+func methodFromMethodFunc(i interface{}, st reflect.Type) (*reflect.Method, error) {
+	fName := runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+	fns := strings.Split(fName, ".")
+	fn := fns[len(fns)-1]
+	m, ok := st.MethodByName(fn)
+	if !ok {
+		return nil, fmt.Errorf("method %s could not be found in struct %s", fn, st.Name())
+	}
+	return &m, nil
 }
