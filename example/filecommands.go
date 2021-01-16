@@ -3,17 +3,21 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 )
 
 type FileCommands struct {
-	root      string
+	Root      string
 	Verbose   bool `flag:"v,verbose"`
 	Recursive bool `flag:"recursive,r"`
 }
 
 func (cl FileCommands) ListFiles(p string) error {
-	fp := path.Join(cl.root, p)
+	if cl.Root == "" {
+		cl.Root, _ = os.Getwd()
+	}
+	fp := path.Join(cl.Root, p)
 	fmt.Printf("listing files for %s ", fp)
 	fmt.Println()
 	names, err := cl.listPath(fp, true, false)
@@ -28,13 +32,17 @@ func (cl FileCommands) ListFiles(p string) error {
 }
 
 func (cl FileCommands) ListDirectory(p string) error {
+	if cl.Root == "" {
+		cl.Root, _ = os.Getwd()
+	}
+
 	fmt.Printf("listing directories for %s ", p)
 	if cl.Recursive {
 		fmt.Print("recursively")
 	}
 	fmt.Println()
 
-	names, err := cl.listPath(path.Join(cl.root, p), false, true)
+	names, err := cl.listPath(path.Join(cl.Root, p), false, true)
 	if err != nil {
 		return err
 	}

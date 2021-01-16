@@ -47,7 +47,7 @@ func (s Signature) listTypes(t []reflect.Type) string {
 	return fmt.Sprintf("[%s]", bf.String())
 }
 
-// NewSignatureOf creates a Signature of the given func or Method
+// NewSignatureOf creates a Signature of the given func or Name
 func NewSignatureOf(fun interface{}) (*Signature, error) {
 	var t reflect.Type
 	m, ok := fun.(reflect.Method)
