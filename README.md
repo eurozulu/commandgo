@@ -1,12 +1,11 @@
 # Mainline
 
 ### Command line arguments object mapper
-
-Maps command line arguments into generic structure methods Simplifying developing a command line based application by
-doing the ground work of mapping command names to functions and parsing the parameters and flags for those functions.
+Simplifies writing command line tools by mapping command line arguments into structure values and method parameters.
+Maps "commands" (The first argument") into struct methods, parsing the ramaining arguments into the parameters for that
+method. Simply define the method and the parameters it requires, and arguments will be mapped into those parameters.
 
 ##### Goal
-
 The goal of this parser is to simplfy the boiler work of mapping arguments into commands, parameters and flags.  
 Leading Command line arguments are mapped to methods on generic structs, with any following arguments being parsed into
 the parameters for that method.  
@@ -15,14 +14,13 @@ Flags from the command line are mapped to public Fields in the same struct.
 ##### Usage
 
 To create a simple, two command interface:  
-`userinfo  param1 param2 param3 --name john -timeout 24h -d`
-`serverinfo param1 -timeout 24h -d`
+`user  param1 param2 param3 --name john -timeout 24h -d`
+`server param1 -timeout 24h -d`
 
-Create a struct containing methods:  
+Create a struct containing methods to be run when one of these commands are called  
 UserInfo and ServerInfo
 
 Add fields for the named argument flags required.
-
 * name string
 * timeout time.Duration
 * debug bool
@@ -49,8 +47,8 @@ To use the struct, in the application `main()`:
 ```
 func main() {
     cmds := mainline.Commands{
-		"userinfo":                   MyArgs{},
-		"serverinfo":                   MyArgs{},
+		"user":                   MyArgs.UserInfo,
+		"server":             MyArgs.ServerInfo,
 	}
 
 	out, err := cmds.Run(os.Args...)
@@ -102,8 +100,8 @@ There is no distiction between the double dash and single dash for flags.  "-" i
 
 #### Command alias
 
-By default, Commands are mapped (case insensatively) to a method of the same name. Alternative names can be provided in
-the command map by using comma delimited keys.  
+By default, Commands are mapped (case insensatively) to the method. Alternative names can be provided in the same
+command map by simply repeating the same emthod under an alternative key:  
 `    cmds := mainline.Commands{
 "userinfo, ui":             MyArgs{},
 "serverinfo, si, svr":      MyArgs{}, }
@@ -115,15 +113,12 @@ The above example, 'ui' command can be used to call the UserInfo method.
 
 Methods can be hidden using a preceeding dash.
 `    cmds := mainline.Commands{
-"userinfo, ui":             MyArgs{},
-"-serverinfo, si, svr":     MyArgs{},
-"-nevercalled"              MyArgs{}, }
+"user":       MyArgs.UserInfo,
+"ui":             MyArgs.UserInfo,
+"server":         MyArgsServerInfo,
+"si":             MyArgsServerInfo, }
 `
-In this example, serverinfo command is hidden. Only 'si' and 'svr' can be called to call that method.  
-The 'nevercalled' method is never called. As it is hidden with no alias, no mapping exists and the method is ignored.
-
-Using aliases, care must be taken to avoid clashes of command keys. All keys and aliases must be unique.  
-A run time error is thrown if duplicate keys are found.
+In this example, both user and server commands can also be called using ui, si commands respectively.
 
 #### Unnamed arguments
 
