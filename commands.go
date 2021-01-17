@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 )
 
@@ -55,7 +54,6 @@ func (cmds Commands) Run(args ...string) error {
 	if err != nil {
 		return err
 	}
-
 	outVals := ns.MethodByName(md.Name).Call(inParams)
 
 	// check if an error returned
@@ -115,6 +113,9 @@ func parseParameters(m reflect.Method, args []string) ([]reflect.Value, error) {
 		}
 		vals = append(vals, reflect.ValueOf(val))
 	}
+	if !sig.IsVariadic && len(vals) < len(args) {
+		return nil, fmt.Errorf("too many arguments.  %v expected, found %v", sig.String(), args)
+	}
 	return vals, nil
 }
 
@@ -133,7 +134,7 @@ func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 
 // parseFlags parses the given arguments of strings for '-' flags, named values, assigning
 // any named value to a field of the same name (or tagged as that name) in the given value structure.
-func parseFlags(val reflect.Value, args []string) ([]string, error) {
+func parseFlags(stc reflect.Value, args []string) ([]string, error) {
 	var unnamed []string
 	for i := 0; i < len(args); i++ {
 		// collect non flag parameters
@@ -141,54 +142,39 @@ func parseFlags(val reflect.Value, args []string) ([]string, error) {
 			unnamed = append(unnamed, args[i])
 			continue
 		}
-
 		// Locate field in struct of the flag name
 		arg := strings.TrimLeft(args[i], "-")
-		fld := reflection.FindFieldByName(arg, val.Type().Elem(), reflection.FlagTag)
+		fld := reflection.FindFieldByName(arg, stc.Type().Elem(), reflection.FlagTag)
 		if fld == nil {
 			return nil, fmt.Errorf("--%s is an unknown flag", arg)
 		}
 
-		// specical case for bool flags as only one with optional parameter
-		if fld.Type.Kind() == reflect.Bool {
-			var b = "true"
-			// test if following arg exists and is bool
-			if i+1 < len(args) {
-				_, err := strconv.ParseBool(args[i+1])
-				if err == nil {
-					b = args[i+1]
-					i++
-				}
+		i++
+		// create fld value from next argument or its default value
+		var ival interface{}
+		var err error
+		if i < len(args) {
+			ival, err = reflection.ValueFromString(args[i], fld.Type)
+		}
+		// If no valid value following flag, check if its an optional value flag.
+		if ival == nil || err != nil {
+			optVal := containsValue(reflection.TagOptionalValue, strings.Split(fld.Tag.Get(reflection.FlagTag), ","))
+			if !optVal && fld.Type.Kind() != reflect.Bool {
+				return nil, fmt.Errorf("missing value for flag -%s  %v", arg, err)
 			}
-			if err := setFlagValue(b, val.Elem().FieldByName(fld.Name)); err != nil {
+			// Optional value with no value following, create default instance for field.
+			ival, err = reflection.ValueFromString("", fld.Type)
+			if err != nil {
 				return nil, err
 			}
-			continue
-		}
 
-		// All following ars must have following parameter value
-		if i+1 >= len(args) {
-			return nil, fmt.Errorf("missing value for flag -%s", arg)
+			i-- // wind back arg as value not consumed
 		}
-		i++
-
-		if err := setFlagValue(args[i], val.Elem().FieldByName(fld.Name)); err != nil {
+		if err := reflection.SetFieldValue(stc.Elem().FieldByName(fld.Name), ival); err != nil {
 			return nil, err
 		}
 	}
 	return unnamed, nil
-}
-
-func setFlagValue(v string, fld reflect.Value) error {
-	iv, err := reflection.ValueFromString(v, fld.Type())
-	if err != nil {
-		return fmt.Errorf("invalid flag %s value  %v", fld.Type().String(), err)
-	}
-
-	if err := reflection.SetFieldValue(fld, iv); err != nil {
-		return err
-	}
-	return nil
 }
 
 // structFromMethodFunc establishes the struct Type from the given method.
@@ -218,4 +204,13 @@ func methodFromMethodFunc(i interface{}, st reflect.Type) (*reflect.Method, erro
 		return nil, fmt.Errorf("method %s could not be found in struct %s", fn, st.Name())
 	}
 	return &m, nil
+}
+
+func containsValue(s string, values []string) bool {
+	for _, v := range values {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

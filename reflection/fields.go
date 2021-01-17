@@ -6,6 +6,8 @@ import (
 )
 
 const FlagTag = "flag"
+const TagHide = "-"
+const TagOptionalValue = "optionalvalue"
 
 // FindFieldByName scans each field in the given struct for either its fieldname or one of its 'flag' tag names, for the given name.
 func FindFieldByName(name string, t reflect.Type, tagName string) *reflect.StructField {
@@ -28,7 +30,7 @@ func FieldNames(fd reflect.StructField, tagName string) []string {
 	if !ok { // no tag, just the field name
 		return names
 	}
-	if tag == "-" { // ignore those taged with dash
+	if tag == TagHide { // ignore those taged with dash
 		return nil
 	}
 	for _, tn := range strings.Split(tag, ",") {

@@ -29,31 +29,6 @@ import (
 var SliceDelimiter = ","
 var TimeFormat = time.RFC3339
 
-// Parse the given strings into values of the given types.
-// The length of both slices must be equal, with the type for the first string being the first type and so on.
-func ValuesFromString(v []string, types []reflect.Type) ([]interface{}, error) {
-	if len(v) < len(types) {
-		return nil, fmt.Errorf("not enough parameters")
-	}
-	if len(v) > len(types) {
-		return nil, fmt.Errorf("too many parameters")
-	}
-
-	vals := make([]interface{}, len(types))
-	for i, pt := range types {
-		val, err := ValueFromString(v[i], pt)
-		if err != nil { // failed to parse as correct type, not a match
-			return nil, fmt.Errorf("parameter %v could not be parsed as a %v", v[1], pt.String())
-		}
-		if pt.Kind() == reflect.Ptr {
-			vals[i] = reflect.ValueOf(val).Interface()
-		} else {
-			vals[i] = reflect.ValueOf(val).Elem().Interface()
-		}
-	}
-	return vals, nil
-}
-
 // ValueFromString attempts to parse the given string, into the given type.
 // If the string is parsable and the type is supported, the resulting value is returned as an interface.
 // Most types are supported with the exception of channels, functions.
@@ -66,8 +41,17 @@ func ValuesFromString(v []string, types []reflect.Type) ([]interface{}, error) {
 // Maps is a work in progress ;-)
 func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 	switch t.Kind() {
-	case reflect.Interface, reflect.Ptr:
+	case reflect.Interface:
 		return ValueFromString(v, t.Elem())
+
+	case reflect.Ptr:
+		v, err := ValueFromString(v, t.Elem())
+		if err != nil {
+			return nil, err
+		}
+		p := reflect.New(t.Elem())
+		p.Elem().Set(reflect.ValueOf(v))
+		return p.Interface(), nil
 
 	case reflect.Struct:
 		return structureFromString(v, t)
@@ -97,13 +81,16 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 
 func structureFromString(s string, t reflect.Type) (interface{}, error) {
 	pStr := reflect.New(t)
+	if s == "" {
+		return pStr.Elem().Interface(), nil
+	}
 
 	if t == reflect.TypeOf(url.URL{}) {
 		u, err := url.Parse(s)
 		if err != nil {
 			return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
 		}
-		return u, nil
+		return *u, nil
 	}
 
 	if t == reflect.TypeOf(time.Time{}) {
@@ -155,18 +142,26 @@ func sliceFromString(s string, t reflect.Type) (interface{}, error) {
 
 // Map is parsed as json
 func mapFromString(s string, t reflect.Type) (interface{}, error) {
-	pStr := reflect.New(t)
-	err := json.Unmarshal([]byte(s), pStr.Interface())
-	if err != nil {
-		return nil, err
+	mp := reflect.New(t)
+	if s != "" {
+		err := json.Unmarshal([]byte(s), mp.Interface())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		mp.Elem().Set(reflect.MakeMap(t))
 	}
-	return pStr.Interface(), nil
+	return mp.Interface(), nil
 }
 
 func floatFromString(s string, t reflect.Type) (interface{}, error) {
-	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
+	var f float64
+	if s != "" {
+		fl, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
+		}
+		f = fl
 	}
 	iv := reflect.New(t)
 	iv.Elem().SetFloat(f)
@@ -176,26 +171,36 @@ func floatFromString(s string, t reflect.Type) (interface{}, error) {
 func intFromString(s string, t reflect.Type) (interface{}, error) {
 	// Special cases
 	if t == reflect.TypeOf(time.Duration(0)) {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
+		var d time.Duration
+		if s != "" {
+			du, err := time.ParseDuration(s)
+			if err != nil {
+				return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
+			}
+			d = du
 		}
 		return &d, nil
 	}
 
-	i, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
+	var i int
+	if s != "" {
+		ii, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
+		}
+		i = int(ii)
 	}
-	iv := reflect.New(t)
-	iv.Elem().SetInt(i)
-	return iv.Interface(), nil
+	return i, nil
 }
 
 func boolFromString(s string, t reflect.Type) (interface{}, error) {
-	b, err := strconv.ParseBool(s)
-	if err != nil {
-		b = true // Special case for bools, default to true, when present.
+	b := true // Special case for bools, default to true, when present.
+	if s != "" {
+		bb, err := strconv.ParseBool(s)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
+		}
+		b = bb
 	}
 	bv := reflect.New(t)
 	bv.Elem().SetBool(b)

@@ -4,23 +4,51 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 )
 
 type StringCommands struct {
 	// WrapText -wrap or -w wraps the given string before and after the reversed result.
 	WrapText string `flag:"w,wrap"`
 
-	MapTest map[string]interface{} `flag:"map"`
+	MapTest    map[string]interface{} `flag:"map,optionalvalue"`
+	URLTest    *url.URL               `flag:"url,optionalvalue"`
+	StrPtrTest *string                `flag:"str,optionalvalue"`
+	IntPtrTest *int                   `flag:"int,optionalvalue"`
 }
 
 func (sc StringCommands) Test() {
+
+	if sc.IntPtrTest == nil {
+		fmt.Println("int nil")
+	} else {
+		fmt.Printf("int: %d\n", *sc.IntPtrTest)
+	}
+
+	if sc.URLTest == nil {
+		fmt.Println("url nil")
+	} else {
+		fmt.Printf("url: %v\n", sc.URLTest.String())
+	}
+
+	if sc.StrPtrTest == nil {
+		fmt.Println("StrPtrTest nil")
+	} else {
+		fmt.Printf("StrPtrTest: '%s'\n", *sc.StrPtrTest)
+	}
+
 	if sc.MapTest == nil {
 		fmt.Println("Map not set")
 		return
 	}
+	if len(sc.MapTest) == 0 {
+		sc.MapTest["map"] = "is empty!"
+	}
 	for k, v := range sc.MapTest {
 		fmt.Printf("%s = %v", k, v)
 	}
+
+	fmt.Println("\ndone")
 }
 
 // Reverse the given argument
