@@ -11,7 +11,8 @@ type StringCommands struct {
 	// WrapText -wrap or -w wraps the given string before and after the reversed result.
 	WrapText string `flag:"w,wrap"`
 
-	MapTest    map[string]interface{} `flag:"map,optionalvalue"`
+	// MapTest tagged as the wildcard flag with '*'.  Any flags specified not matching to fields are placed in this map.
+	MapTest    map[string]interface{} `flag:"map,*"`
 	URLTest    *url.URL               `flag:"url,optionalvalue"`
 	StrPtrTest *string                `flag:"str,optionalvalue"`
 	IntPtrTest *int                   `flag:"int,optionalvalue"`

@@ -3,6 +3,7 @@ package mainline
 import (
 	"fmt"
 	"github.com/eurozulu/mainline/reflection"
+	"log"
 	"os"
 	"reflect"
 	"runtime"
@@ -136,17 +137,33 @@ func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 // any named value to a field of the same name (or tagged as that name) in the given value structure.
 func parseFlags(stc reflect.Value, args []string) ([]string, error) {
 	var unnamed []string
+
+	// Check if any field if the wildcard flag.  nil if not.
+	wcMap := wildcardFlagMap(stc)
+
 	for i := 0; i < len(args); i++ {
 		// collect non flag parameters
 		if !strings.HasPrefix(args[i], "-") || args[i] == "-" {
 			unnamed = append(unnamed, args[i])
 			continue
 		}
+
 		// Locate field in struct of the flag name
 		arg := strings.TrimLeft(args[i], "-")
 		fld := reflection.FindFieldByName(arg, stc.Type().Elem(), reflection.FlagTag)
-		if fld == nil {
-			return nil, fmt.Errorf("--%s is an unknown flag", arg)
+		if fld == nil { // No field with that name defined.
+			// No wildcard field so throw error
+			if wcMap == nil {
+				return nil, fmt.Errorf("-%s is an unknown flag", arg)
+			}
+			// Add falg and following value to wildcard map
+			var s string
+			if i+1 < len(args) {
+				i++
+				s = args[i]
+			}
+			wcMap[arg] = s
+			continue
 		}
 
 		i++
@@ -156,6 +173,7 @@ func parseFlags(stc reflect.Value, args []string) ([]string, error) {
 		if i < len(args) {
 			ival, err = reflection.ValueFromString(args[i], fld.Type)
 		}
+
 		// If no valid value following flag, check if its an optional value flag.
 		if ival == nil || err != nil {
 			optVal := containsValue(reflection.TagOptionalValue, strings.Split(fld.Tag.Get(reflection.FlagTag), ","))
@@ -213,4 +231,27 @@ func containsValue(s string, values []string) bool {
 		}
 	}
 	return false
+}
+
+// wildcardFlagMap attempts to find a Field in the given structure with a "flags" tag option of wildcard "*".
+// If a field is tagged as a wildcard flag, it must be defined as a map with string keys.
+// Any flag not defined in the structure will be placed in the wildcard map.
+// If no wildcard flag is set, flags with no matching field throw the unknown flag error.
+// Using a wildcard will prevent any error for unknown flag.
+func wildcardFlagMap(st reflect.Value) map[string]interface{} {
+	// wildcard is optinal flag to collect undefined flags
+	wcfld := reflection.FindFieldByName(reflection.TagWildcard, st.Type().Elem(), reflection.FlagTag)
+	if wcfld == nil {
+		return nil
+	}
+	if wcfld.Type.Kind() != reflect.Map {
+		log.Println("config error: wildcard flag field is not a map")
+		return nil
+	}
+	fv := st.Elem().FieldByName(wcfld.Name)
+	if fv.IsNil() {
+		mp := reflect.MakeMapWithSize(wcfld.Type, 5)
+		fv.Set(mp)
+	}
+	return fv.Interface().(map[string]interface{})
 }

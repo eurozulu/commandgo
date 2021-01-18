@@ -8,6 +8,7 @@ import (
 const FlagTag = "flag"
 const TagHide = "-"
 const TagOptionalValue = "optionalvalue"
+const TagWildcard = "*"
 
 // FindFieldByName scans each field in the given struct for either its fieldname or one of its 'flag' tag names, for the given name.
 func FindFieldByName(name string, t reflect.Type, tagName string) *reflect.StructField {
