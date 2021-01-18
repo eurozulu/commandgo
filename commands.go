@@ -138,7 +138,7 @@ func parseFlags(stc reflect.Value, args []string) ([]string, error) {
 	var unnamed []string
 	for i := 0; i < len(args); i++ {
 		// collect non flag parameters
-		if !strings.HasPrefix(args[i], "-") && args[i] == "-" {
+		if !strings.HasPrefix(args[i], "-") || args[i] == "-" {
 			unnamed = append(unnamed, args[i])
 			continue
 		}
