@@ -202,9 +202,7 @@ func boolFromString(s string, t reflect.Type) (interface{}, error) {
 		}
 		b = bb
 	}
-	bv := reflect.New(t)
-	bv.Elem().SetBool(b)
-	return bv.Interface(), nil
+	return b, nil
 }
 
 func stringFromString(s string, t reflect.Type) (interface{}, error) {
