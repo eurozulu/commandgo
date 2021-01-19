@@ -1,30 +1,47 @@
 package mainline
 
 import (
+	"bytes"
 	"fmt"
+	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 )
 
-// ShowCommands lists all the avilable commands and their aliases
-func ShowCommands(cmds Commands, args ...string) {
-	var c []string
-	for k := range cmds {
-		ks := strings.Split(k, ",")
-		s := ks[0]
-		if strings.HasPrefix(s, "-") {
-			if len(ks) < 2 {
-				return
-			}
-			s = ks[1]
+type HelpCommand struct {
+	CommandMap Commands
+}
+
+// Help lists all the avilable commands and their aliases
+func (ch HelpCommand) Help(_ ...string) {
+	// Invert command map so functions are the keys and stringslice of all commands mapped to it.
+	iMap := map[string][]string{}
+	for k, iv := range ch.CommandMap {
+		if reflect.TypeOf(iv) == reflect.TypeOf(HelpCommand.Help) {
+			continue
 		}
-		if len(ks) > 1 {
-			s = strings.Join([]string{s, fmt.Sprintf("\t\t(%s)", strings.Join(ks[1:], ", "))}, "")
+		fName := runtime.FuncForPC(reflect.ValueOf(iv).Pointer()).Name()
+		cmds := iMap[fName]
+		iMap[fName] = append(cmds, k)
+	}
+
+	buf := bytes.NewBuffer(nil)
+	for k, v := range iMap {
+		// Sort command so longest is title command
+		sort.Slice(v, func(i, j int) bool {
+			return len(v[i]) > len(v[j])
+		})
+
+		_, _ = fmt.Fprintf(buf, "%s", v[0])
+		if len(v) > 1 {
+			_, _ = fmt.Fprintf(buf, " (%s)\t", strings.Join(v[1:], ", "))
+		} else {
+			_, _ = fmt.Fprintf(buf, "\t\t\t")
 		}
-		c = append(c, s)
+		_, _ = fmt.Fprintln(buf, k)
 	}
-	sort.Strings(c)
-	for _, cmd := range c {
-		fmt.Println(cmd)
-	}
+	bc := strings.Split(buf.String(), "\n")
+	sort.Strings(bc)
+	fmt.Println(strings.Join(bc, "\n"))
 }

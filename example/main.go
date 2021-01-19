@@ -15,8 +15,10 @@ func main() {
 		"encode":        StringCommands.Base64Encode,
 		"listFiles":     FileCommands.ListFiles,
 		"lf":            FileCommands.ListFiles,
+		"ls":            FileCommands.ListFiles,
 		"listdirectory": FileCommands.ListDirectory,
 		"ld":            FileCommands.ListDirectory,
+		"help":          mainline.HelpCommand.Help,
 	}
 
 	if err := cmds.Run(os.Args...); err != nil {

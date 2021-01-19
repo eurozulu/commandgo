@@ -45,6 +45,12 @@ func (cmds Commands) Run(args ...string) error {
 	// new instance of struct
 	ns := reflect.New(st)
 
+	// Special case for build-in command help
+	if ns.Type() == reflect.TypeOf((*HelpCommand)(nil)) {
+		ch := ns.Interface().(*HelpCommand)
+		ch.CommandMap = cmds
+	}
+
 	// parse args for flags and assign to struct fields
 	params, err := parseFlags(ns, args)
 	if err != nil {
