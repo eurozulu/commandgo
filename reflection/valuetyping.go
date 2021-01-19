@@ -131,11 +131,15 @@ func sliceFromString(s string, t reflect.Type) (interface{}, error) {
 	ss := strings.Split(s, SliceDelimiter)
 	sv := reflect.MakeSlice(t, 0, len(ss))
 	for _, sa := range ss {
-		sav, err := ValueFromString(sa, t.Elem())
+		sel, err := ValueFromString(sa, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("%s could not be read as a %s", sa, t.Elem().String())
 		}
-		sv = reflect.Append(sv, reflect.ValueOf(sav).Elem())
+		ev := reflect.ValueOf(sel)
+		if ev.Kind() == reflect.Ptr {
+			ev = ev.Elem()
+		}
+		sv = reflect.Append(sv, ev)
 	}
 	return sv.Interface(), nil
 }
