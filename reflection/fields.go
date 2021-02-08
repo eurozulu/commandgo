@@ -14,6 +14,11 @@ const TagWildcard = "*"
 func FindFieldByName(name string, t reflect.Type, tagName string) *reflect.StructField {
 	for i := 0; i < t.NumField(); i++ {
 		fld := t.Field(i)
+		if fld.Type.Kind() == reflect.Struct {
+			if sf := FindFieldByName(name, fld.Type, tagName); sf != nil {
+				return sf
+			}
+		}
 		names := FieldNames(fld, tagName)
 		for _, n := range names {
 			if strings.EqualFold(name, n) {
