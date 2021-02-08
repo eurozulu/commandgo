@@ -204,6 +204,9 @@ func parseFlags(stc reflect.Value, args []string) ([]string, error) {
 // structFromMethodFunc establishes the struct Type from the given method.
 // Given mentod must be a Func which is a Method, (First parameter being the owning struct)
 func structFromMethodFunc(i interface{}) (reflect.Type, error) {
+	if i == nil {
+		return nil, fmt.Errorf("method is nil")
+	}
 	vt := reflect.TypeOf(i)
 	if vt.Kind() != reflect.Func {
 		return nil, fmt.Errorf("%s is not a method", vt.Name())
