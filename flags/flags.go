@@ -17,7 +17,7 @@ package flags
 import (
 	"errors"
 	"fmt"
-	"github.com/eurozulu/mainline/values"
+	"github.com/eurozulu/commandgo/values"
 	"reflect"
 	"strings"
 )

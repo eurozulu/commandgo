@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-package mainline
+package commandgo
 
 import (
 	"bytes"
 	"fmt"
-	"github.com/eurozulu/mainline/functions"
+	"github.com/eurozulu/commandgo/functions"
 	"reflect"
 	"runtime"
 	"sort"

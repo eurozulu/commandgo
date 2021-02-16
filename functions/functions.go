@@ -16,7 +16,7 @@ package functions
 
 import (
 	"fmt"
-	"github.com/eurozulu/mainline/flags"
+	"github.com/eurozulu/commandgo/flags"
 	"reflect"
 	"runtime"
 	"strings"

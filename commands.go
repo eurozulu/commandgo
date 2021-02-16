@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-package mainline
+package commandgo
 
 import (
 	"fmt"
-	"github.com/eurozulu/mainline/flags"
-	"github.com/eurozulu/mainline/functions"
+	"github.com/eurozulu/commandgo/flags"
+	"github.com/eurozulu/commandgo/functions"
 	"os"
 	"path"
 	"strings"

@@ -16,7 +16,7 @@ package functions
 
 import (
 	"fmt"
-	"github.com/eurozulu/mainline/values"
+	"github.com/eurozulu/commandgo/values"
 	"reflect"
 )
 

@@ -1,4 +1,4 @@
-# Mainline
+# CommandGo
 
 ### Command line arguments object mapper
 
@@ -27,7 +27,7 @@ A simple, two command "tool" which prints out user "data" or server data.
 
 ```
 func main() {
-    cmds := mainline.Commands{
+    cmds := commandgo.Commands{
 		"user":       UserInfo,
 		"server":     ServerInfo,
 		"":           ShowHelp
@@ -105,7 +105,7 @@ There is no distiction between the double dash and single dash for flags.  "-" i
 To specifiy more than one command name for the same function, simply map two or more entiries with the same value.
 
 ```
-cmd := mainline.Commands{
+cmd := commandgo.Commands{
   "mylongcommandname" : MyCommands.LongName,
   "mlcn"              : MyCommands.LongName,
 }

@@ -17,7 +17,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/eurozulu/mainline"
+	"github.com/eurozulu/commandgo"
 	"io"
 	"io/ioutil"
 	"log"
@@ -35,11 +35,11 @@ func main() {
 	// The GlobalFlags assigns one or more flag names to a global variable.
 	// The command line is parsed for these flags before any command is parsed.
 	// The value must be a pointer to the variable, followed by one or more names to given the flag.
-	if err := mainline.GlobalFlags.AddFlag(&Verbose, "verbose", "v"); err != nil {
+	if err := commandgo.GlobalFlags.AddFlag(&Verbose, "verbose", "v"); err != nil {
 		log.Fatalln(err)
 	}
 
-	cmds := mainline.Commands{
+	cmds := commandgo.Commands{
 		"get":  GetURL,
 		"post": PostCommand.PostURL,
 
