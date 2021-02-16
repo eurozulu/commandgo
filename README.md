@@ -140,5 +140,8 @@ will throw an error of invalid date.
 
 Check the fields description for the data types supported as parameters.
 
-  
+#### Variadic Parameters
+Variadic parameters are supported.  When present, the command line arguments 
+from the final position, onwards, are all parsed into a slice of the Variadic type.
+
 
