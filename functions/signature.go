@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package reflection
+package functions
 
 import (
 	"bytes"
@@ -47,26 +47,20 @@ func (s Signature) listTypes(t []reflect.Type) string {
 	return fmt.Sprintf("[%s]", bf.String())
 }
 
-// NewSignatureOf creates a Signature of the given func or Name
-func NewSignatureOf(fun interface{}) (*Signature, error) {
-	var t reflect.Type
-	m, ok := fun.(reflect.Method)
-	if ok {
-		t = m.Type
-
-	} else { // not a method, see if its a func
-		t = reflect.TypeOf(fun)
-		if t.Kind() != reflect.Func {
-			return nil, fmt.Errorf("fun %s is not a method or func", t.Name())
-		}
+// NewSignature creates a Signature of the given func or Name
+func NewSignature(i interface{}) (*Signature, error) {
+	if !IsFunc(i) {
+		return nil, fmt.Errorf("not a function")
 	}
-
+	isMethod := IsMethod(i)
+	t := reflect.TypeOf(i)
+	var params []reflect.Type
 	var index int
-	if ok { // if method, move pased first param
+	if isMethod {
+		// Skip receiver param on methods
 		index++
 	}
 	in := t.NumIn()
-	var params []reflect.Type
 	for ; index < in; index++ {
 		params = append(params, t.In(index))
 	}

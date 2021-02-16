@@ -3,6 +3,7 @@ package mainline
 import (
 	"bytes"
 	"fmt"
+	"github.com/eurozulu/mainline/functions"
 	"reflect"
 	"runtime"
 	"sort"
@@ -14,7 +15,7 @@ type HelpCommand struct {
 }
 
 // Help lists all the avilable commands and their aliases
-func (ch HelpCommand) Help(_ ...string) {
+func (ch HelpCommand) Help(_ ...string) error {
 	// Invert command map so functions are the keys and stringslice of all commands mapped to it.
 	iMap := map[string][]string{}
 	for k, iv := range ch.CommandMap {
@@ -44,4 +45,21 @@ func (ch HelpCommand) Help(_ ...string) {
 	bc := strings.Split(buf.String(), "\n")
 	sort.Strings(bc)
 	fmt.Println(strings.Join(bc, "\n"))
+	return nil
+}
+
+func IsHelpCommand(i interface{}) bool {
+	if !functions.IsMethod(i) {
+		return false
+	}
+	return reflect.PtrTo(reflect.TypeOf(i).In(0)) == reflect.TypeOf((*HelpCommand)(nil))
+}
+
+func CallHelpCommand(i interface{}, cmds Commands, args ...string) error {
+	if !IsHelpCommand(i) {
+		return fmt.Errorf("interface is not HelpCommand")
+	}
+	hc := reflect.New(reflect.TypeOf(i).In(0)).Interface().(*HelpCommand)
+	hc.CommandMap = cmds
+	return hc.Help(args...)
 }

@@ -1,0 +1,99 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"github.com/eurozulu/mainline"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+)
+
+// Verbose output.  Global flag, available to all commands
+var Verbose bool
+
+func main() {
+
+	// The GlobalFlags assigns one or more flag names to a global variable.
+	// The command line is parsed for these flags before any command is parsed.
+	// The value must be a pointer to the variable, followed by one or more names to given the flag.
+	if err := mainline.GlobalFlags.AddFlag(&Verbose, "verbose", "v"); err != nil {
+		log.Fatalln(err)
+	}
+
+	cmds := mainline.Commands{
+		"get":  GetURL,
+		"post": PostCommand.PostURL,
+
+		// empty key will be called if no arguments ar given
+		"": ShowHelp,
+	}
+
+	if err := cmds.Run(os.Args...); err != nil {
+		fmt.Println(err)
+	}
+}
+
+// GetURL is an example global function using a single URL parameter.
+// The command line arguments are parsed into the URL by the framework.
+func GetURL(u *url.URL) error {
+	r, err := http.Get(u.String())
+	if err != nil {
+		return err
+	}
+	return writePresponse(r, os.Stdout)
+}
+
+// PostCommand is a struct used for the Post command.
+// Using a method, rather than a global function, allows flags specific to the methods on the function.
+// e.g. Post uses a 'ContentType' flag, which is only specific to the post command.
+type PostCommand struct {
+	ContentType string `flag:"contenttype,content-type,ct"`
+}
+
+// PostURL to the given url, the given data
+func (pc PostCommand) PostURL(u *url.URL, data string) error {
+	if pc.ContentType == "" {
+		pc.ContentType = "text/plain"
+	}
+	r, err := http.Post(u.String(), pc.ContentType, bytes.NewBufferString(data))
+	if err != nil {
+		return err
+	}
+	return writePresponse(r, os.Stdout)
+}
+
+// writePresponse reads the Body of the given response and pushes it into the given out.
+// If Versobe flag is true, also writes the response headers, prior to writing the body
+func writePresponse(r *http.Response, out io.Writer) error {
+	if Verbose {
+		if err := r.Header.WriteSubset(out, map[string]bool{}); err != nil {
+			return err
+		}
+	}
+	by, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if err := r.Body.Close(); err != nil {
+		log.Println(err)
+	}
+	by = append(by, '\n')
+	if _, err = os.Stdout.Write(by); err != nil {
+		return err
+	}
+	return nil
+}
+func ShowHelp() error {
+	fmt.Printf("%s get <url>\n", path.Base(os.Args[0]))
+	fmt.Printf("%s post <url> <data>\n", path.Base(os.Args[0]))
+	fmt.Println("get\t\tgets from the given URL")
+	fmt.Println("post\t\tposts to the given URL, the following string")
+	fmt.Println("use -contenttype (-ct) to specify a content type for posting")
+	fmt.Println("use -verbose (-v) to putput the response headers for both get and post")
+	return nil
+}

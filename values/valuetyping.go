@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package reflection
+package values
 
 import (
 	"encoding"
@@ -213,4 +213,20 @@ func stringFromString(s string, t reflect.Type) (interface{}, error) {
 	sv := reflect.New(t)
 	sv.Elem().SetString(s)
 	return sv.Elem().Interface(), nil
+}
+
+// Sets the given receiver with the given value.
+// Assigns the value or a pointer to it, depending on the reciever type
+func SetValue(recv reflect.Value, val interface{}) {
+	v := reflect.ValueOf(val)
+	if v.Type().Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	// Assign value.  Check if receiver is expecting a pointer or not.
+	if recv.Type().Kind() == reflect.Ptr {
+		recv.Elem().Set(v)
+	} else {
+		recv.Set(v)
+	}
 }
