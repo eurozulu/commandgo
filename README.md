@@ -14,8 +14,9 @@ Partly insprired by [Spring IOC]("https://www.baeldung.com/inversion-control-and
 the Java world, generic variables, structures and parameters can have their values 'injected' into them from an external
 source, in this case, the command line arguments.
 
-To use a function, simply write the paramters you need and the framework ensures the paramters given can be parsed into
-those values. For optional, command line flags (-myflag) values can be mapped to fields in a specific structure or to
+To use a function, simply write the parameters you need and the framework ensures the command line arguments given are parsed into
+the correct data types for those parameters.  
+For optional, command line flags (-myflag) values can be mapped to fields in a specific structure or to
 global variables.
 
 Offer structure to the functional aspect of the command line tool. Each command can be global, or 'wrapped' in its own
