@@ -80,6 +80,16 @@ certain structs are supported:
   interface
 + Those supporting [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) interface
 + Date, Duration and url.URL
+  
+Flags may be mapped to global variables using a pointer to that variable and assigning one or more flag names to it:  
+`commandgo.AddFlag(&Verbose, "verbose","v")`
+This assumes there is a global variable called Verbose:
+`var Verbose bool`  
+
+Being global, all command have access to these values.  
+Fields may also be mapped to struct fields.  For commands wishing to have flags specific to that command,
+and not global.  Such commands can map to a method in a generic struct, which makes all the fields in 
+that struct available as flags.
 
 #### Tags
 
