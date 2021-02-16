@@ -30,14 +30,20 @@ import (
 // Verbose output.  Global flag, available to all commands
 var Verbose bool
 
+var HelpFlag bool
+
+// minicurl is a simple example to perform http GET and POSTs from the command line.
 func main() {
 
-	// The GlobalFlags assigns one or more flag names to a global variable.
+	// The AddFlags assigns one or more flag names to a global variable.
 	// The command line is parsed for these flags before any command is parsed.
 	// The value must be a pointer to the variable, followed by one or more names to given the flag.
-	if err := commandgo.GlobalFlags.AddFlag(&Verbose, "verbose", "v"); err != nil {
-		log.Fatalln(err)
-	}
+	commandgo.AddFlag(&Verbose, "verbose", "v")
+	commandgo.AddFlag(&HelpFlag, "help")
+
+	// Flags mapped to struct fields are automatically detected and parsed.
+	// e.g. the PostCommand ContentType flag will become active only when the PostURL method is being called.
+	// Otherwise, (such as Get being called, it will throw unknown flag error
 
 	cmds := commandgo.Commands{
 		"get":  GetURL,
@@ -55,6 +61,11 @@ func main() {
 // GetURL is an example global function using a single URL parameter.
 // The command line arguments are parsed into the URL by the framework.
 func GetURL(u *url.URL) error {
+	if HelpFlag {
+		fmt.Println("get requires a http url, e.g. http://localhost:8080/\nReturns the body response. Use -v to get headers")
+		return nil
+	}
+
 	r, err := http.Get(u.String())
 	if err != nil {
 		return err
@@ -71,6 +82,12 @@ type PostCommand struct {
 
 // PostURL to the given url, the given data
 func (pc PostCommand) PostURL(u *url.URL, data string) error {
+	if HelpFlag {
+		fmt.Println("post requires a http url and a data string, e.g. http://localhost:8080/ 'mydata to post'\nReturns the body response. Use -v to get headers")
+		fmt.Println("optional -contenttype flag can specify mime type of content being posted. defaults to text/plain")
+		return nil
+	}
+
 	if pc.ContentType == "" {
 		pc.ContentType = "text/plain"
 	}

@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-var GlobalFlags = flags.NewFlags(true)
+var globalFlags = flags.NewFlags(true)
 
 // Commands maps one or more 'command' strings to methods and/or functions on a mapped struct.
 type Commands map[string]interface{}
@@ -35,11 +35,11 @@ func (cmds Commands) Run(args ...string) error {
 	if len(args) > 0 && args[0] == os.Args[0] {
 		args = args[1:]
 	}
-	if err := GlobalFlags.Apply(args...); err != nil {
+	if err := globalFlags.Apply(args...); err != nil {
 		return err
 	}
 	// adjust the arguments with any global flags removed
-	args = GlobalFlags.Parameters()
+	args = globalFlags.Parameters()
 
 	// use first arg as the command, if it exists. (Can be empty, is an empty mapping exists)
 	var arg string
@@ -83,4 +83,13 @@ func (cmds Commands) findCommand(arg string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// AddFlag adds the given pointer as a global named flag.
+// v must be a pointer, names must contain one or more names to give that flag.
+// Will panic if v is nil, contains a nil value or is not a pointer, or names is empty
+func AddFlag(v interface{}, names ...string) {
+	if err := globalFlags.AddFlag(v, names...); err != nil {
+		panic(err)
+	}
 }
