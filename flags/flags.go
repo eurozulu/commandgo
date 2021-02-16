@@ -1,3 +1,17 @@
+// Copyright 2020 Rob Gilham
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 package flags
 
 import (
@@ -10,6 +24,10 @@ import (
 
 var ErrUnknownFlag = errors.New("unknown flag")
 
+// NewFlags creates a new Flags parser
+// When the ignoreUnknown flag is true, the parser ignores flags found in the command line which do not map to known flags,
+// passing them onto the Parameters.
+// If ignoreUnknown is false, an error is thrown when applying the command line and an unmapped flag is found.
 func NewFlags(ignoreUnknown bool) *Flags {
 	return &Flags{flags: make(map[string]interface{}), IgnoreUnknown: ignoreUnknown}
 }
@@ -19,6 +37,7 @@ type Flags struct {
 	flags         map[string]interface{}
 }
 
+// Parameters gets the unnamed arguments and unknown flags parsed from the last applied commandline
 func (fs Flags) Parameters() []string {
 	v, ok := fs.flags[""]
 	if !ok {
@@ -39,6 +58,11 @@ func (fs Flags) String() []string {
 	return ss
 }
 
+// Apply the given command arguments to the flags.
+// the arguments are parsed for any beginning with a '-'.
+// If the flag is not boolean, the following argument is taken as the flag value.
+// boolean flags can have a value, but if the following argument can't be parsed as a bool, its ignored.
+// Arguments that are not flags or flag values, (or flags not known) are kept as parameters.
 func (fs Flags) Apply(args ...string) error {
 	for i := 0; i < len(args); i++ {
 		// collect non flag parameters in empty key

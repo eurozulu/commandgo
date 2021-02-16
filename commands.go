@@ -1,3 +1,17 @@
+// Copyright 2020 Rob Gilham
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 package mainline
 
 import (
@@ -11,11 +25,11 @@ import (
 
 var GlobalFlags = flags.NewFlags(true)
 
-// Commands maps one or more 'command' strings to methods on a mapped struct.
+// Commands maps one or more 'command' strings to methods and/or functions on a mapped struct.
 type Commands map[string]interface{}
 
-// Run attempts to call the mapped method, using the first given argument as the key to the command map.
-// If the given key is found, the remaining arguments are parsed into flags and parameters before the mapped method is called.
+// Run attempts to call the mapped method or function, using the first given argument as the key to the command map.
+// If the given key is found, the remaining arguments are parsed into flags and parameters before the mapped method/func is called.
 func (cmds Commands) Run(args ...string) error {
 	// strip leading arg if it's program name
 	if len(args) > 0 && args[0] == os.Args[0] {

@@ -1,3 +1,17 @@
+// Copyright 2020 Rob Gilham
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 package functions
 
 import (
@@ -15,14 +29,13 @@ func IsFunc(i interface{}) bool {
 }
 
 // CallFunc calls the given function interface using the given arguments.
-// interface must be a fucntion (IsFunc returns true).
+// interface must be a function (IsFunc returns true).
 // function is called as a global function, assuming all parameters are inputs.
-// If called with a method, will assume the reciever sturcture is a parameter.
+// If called with a method, will assume the receiver structure is a parameter.
 func CallFunc(i interface{}, args ...string) error {
 	if !IsFunc(i) {
 		return fmt.Errorf("Not a function")
 	}
-
 	// Check for unknown flags
 	fgs := flags.NewFlags(false)
 	if err := fgs.Apply(args...); err != nil {
@@ -77,6 +90,11 @@ func IsMethod(i interface{}) bool {
 	return true
 }
 
+// CallMethod calls the given method using the given arguments.
+// Like CallFunc, args are parsed into parameters for the call and therefore must line up in terms of
+// number, order and type.
+// The first parameter will be used as the receiver structures, a new instance of which is created,
+// and any flags values applied to its matching fields, prior to the method being called.
 func CallMethod(i interface{}, args ...string) error {
 	if !IsMethod(i) {
 		return fmt.Errorf("Not a method!")
