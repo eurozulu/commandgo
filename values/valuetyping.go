@@ -38,7 +38,7 @@ var TimeFormat = time.RFC3339
 // slices/arrays are parsed as comma delimited items. Change the SliceDelimiter for something else.
 // All supported types can be used as item types of the array.
 // Base types float, int, bool string are supported.
-// Maps is a work in progress ;-)
+// Maps are parsed as json structures. e.g. -mapflag '{"mykey": "myvalue", "isIt": true}'
 func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 	switch t.Kind() {
 	case reflect.Interface:

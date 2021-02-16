@@ -133,9 +133,9 @@ e.g. should a method or function have a signature such as:
 `func (ma Myargs) MyCommand(s string, t time.Time, count int)`  
 It will require three unnamed parameters in the command line and those parameters must be valid for the data types in
 that position.  
-`mycommand "hello", "1/1/2001T12:00:00", 4`  
+`mycommand hello "1/1/2001T12:00:00" 4`  
 will parse correctly.  
-`mycommand "1/1/2001T12:00:00", "hello", 4`  
+`mycommand "1/1/2001T12:00:00" hello 4`  
 will throw an error of invalid date.
 
 Check the fields description for the data types supported as parameters.

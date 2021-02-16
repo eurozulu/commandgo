@@ -30,6 +30,7 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 		// if last param and variadic, wrap final args into a single array
 		if sig.IsVariadic && i == len(sig.ParamTypes)-1 {
 			if i < len(args) { // optional params provided
+				// Wrap remaining args in slice of the same type.
 				vps, err := variadicParams(args[i:], pt.Elem())
 				if err != nil {
 					return nil, err
@@ -54,6 +55,7 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 	return vals, nil
 }
 
+// variadicParams parses the given string slice int a slice of values of the given type,
 func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 	vals := make([]reflect.Value, len(args))
 	for i, arg := range args {
@@ -64,5 +66,4 @@ func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 		vals[i] = reflect.ValueOf(val)
 	}
 	return vals, nil
-
 }
