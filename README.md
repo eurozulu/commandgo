@@ -10,7 +10,7 @@ Simply define the method and the parameters it requires, and arguments will be m
 
 The goal of this parser is to simplfy the boiler work of mapping command line arguments into commands, parameters and
 flags.  
-Partly insprired by [Spring ICO]("https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring") from
+Partly insprired by [Spring IOC]("https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring") from
 the Java world, generic variables, structures and parameters can have their values 'injected' into them from an external
 source, in this case, the command line arguments.
 
