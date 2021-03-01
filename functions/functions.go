@@ -104,7 +104,7 @@ func CallMethod(i interface{}, args ...string) error {
 	ns := reflect.New(reflect.TypeOf(i).In(0))
 	md := ns.MethodByName(FuncName(i, false))
 
-	flgs, err := flags.NewStructFlags(ns.Type())
+	flgs, err := flags.NewStructFlags(ns)
 	if err != nil {
 		return err
 	}

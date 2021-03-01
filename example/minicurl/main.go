@@ -44,7 +44,6 @@ func main() {
 	// Flags mapped to struct fields are automatically detected and parsed.
 	// e.g. the PostCommand ContentType flag will become active only when the PostURL method is being called.
 	// Otherwise, (such as Get being called, it will throw unknown flag error
-
 	cmds := commandgo.Commands{
 		"get":  GetURL,
 		"post": PostCommand.PostURL,

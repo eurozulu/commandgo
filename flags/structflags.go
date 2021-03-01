@@ -18,52 +18,42 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unsafe"
 )
 
 const TagName = "flag"
 const TagHide = "-"
-const TagOptionalValue = "optionalvalue"
-const TagWildcard = "*"
+
+//const TagOptionalValue = "optionalvalue"
+//const TagWildcard = "*"
 
 // NewStructFlags creates a new Flags parser for the fields in the given struct type.
-func NewStructFlags(str reflect.Type) (*Flags, error) {
-	if str.Kind() == reflect.Ptr {
-		return NewStructFlags(str.Elem())
-	}
-	if str.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("struct flags failed as given item not a structure")
+func NewStructFlags(str reflect.Value) (*Flags, error) {
+	if str.Kind() != reflect.Ptr && str.Elem().Kind() != reflect.Struct {
+		return nil, fmt.Errorf("struct flags failed as given item not a ptr to structure")
 	}
 
 	fs := NewFlags(false)
-	for _, fld := range structFields(str) {
-		// Use tag names for flag names unles no tags available, then use field name in lower case
-		names := fieldTagNames(fld)
-		if len(names) == 0 {
-			names = []string{strings.ToLower(fld.Name)}
-		}
-		if err := fs.AddFlag(fld, names...); err != nil {
-			return nil, err
-		}
-	}
-	return fs, nil
-}
 
-func structFields(t reflect.Type) []*reflect.StructField {
-	var sfs []*reflect.StructField
+	v := str.Elem()
+	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		fld := t.Field(i)
 		if _, ok := fld.Tag.Lookup(TagHide); ok {
 			continue
 		}
-
-		// If struct field, recurse down through this
-		if fld.Type.Kind() == reflect.Struct {
-			sfs = append(sfs, structFields(fld.Type)...)
-			continue
+		names := fieldTagNames(&fld)
+		if len(names) == 0 {
+			names = []string{strings.ToLower(fld.Name)}
 		}
-		sfs = append(sfs, &fld)
+		// Convert field into a ptr of its type
+		vfld := v.Field(i)
+		pFld := reflect.NewAt(vfld.Type(), unsafe.Pointer(vfld.UnsafeAddr()))
+		if err := fs.AddFlag(pFld.Interface(), names...); err != nil {
+			return nil, err
+		}
 	}
-	return sfs
+	return fs, nil
 }
 
 func fieldTagNames(fd *reflect.StructField) []string {
