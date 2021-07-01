@@ -18,28 +18,26 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/eurozulu/commandgo"
+	"github.com/eurozulu/commandgo/flags"
+	"github.com/eurozulu/commandgo/help"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"strings"
 )
 
 // Verbose output.  Global flag, available to all commands
 var Verbose bool
 
-var HelpFlag bool
-
 // minicurl is a simple example to perform http GET and POSTs from the command line.
 func main() {
 
-	// The AddFlags assigns one or more flag names to a global variable.
-	// The command line is parsed for these flags before any command is parsed.
-	// The value must be a pointer to the variable, followed by one or more names to given the flag.
-	commandgo.AddFlag(&Verbose, "verbose", "v")
-	commandgo.AddFlag(&HelpFlag, "help")
+	// Add global variables, available  , regardless of the command
+	flags.GlobalFlags["verbose"] = &Verbose
+	flags.GlobalFlags["v"] = &Verbose
 
 	// Flags mapped to struct fields are automatically detected and parsed.
 	// e.g. the PostCommand ContentType flag will become active only when the PostURL method is being called.
@@ -49,7 +47,7 @@ func main() {
 		"post": PostCommand.PostURL,
 
 		// empty key will be called if no arguments ar given
-		"": ShowHelp,
+		"": help.ListCommands,
 	}
 
 	if err := cmds.Run(os.Args...); err != nil {
@@ -57,17 +55,18 @@ func main() {
 	}
 }
 
-// GetURL is an example global function using a single URL parameter.
-// The command line arguments are parsed into the URL by the framework.
+// GetURL requires a http url, e.g. http://localhost:8080/
+// Returns the body response.
+// Use -v to get headers
 func GetURL(u *url.URL) error {
-	if HelpFlag {
-		fmt.Println("get requires a http url, e.g. http://localhost:8080/\nReturns the body response. Use -v to get headers")
-		return nil
-	}
-
 	r, err := http.Get(u.String())
 	if err != nil {
 		return err
+	}
+	if Verbose {
+		for k, v := range r.Header {
+			fmt.Printf("%s:\t%s", k, strings.Join(v, ", "))
+		}
 	}
 	return writePresponse(r, os.Stdout)
 }
@@ -76,17 +75,14 @@ func GetURL(u *url.URL) error {
 // Using a method, rather than a global function, allows flags specific to the methods on the function.
 // e.g. Post uses a 'ContentType' flag, which is only specific to the post command.
 type PostCommand struct {
+	// specify a content type for posting using MIME type. Defaults to text/plain
 	ContentType string `flag:"contenttype,content-type,ct"`
 }
 
 // PostURL to the given url, the given data
+// post requires a http url and a data string, e.g. http://localhost:8080/ 'mydata to post'
+//Returns the body response. Use -v to get headers
 func (pc PostCommand) PostURL(u *url.URL, data string) error {
-	if HelpFlag {
-		fmt.Println("post requires a http url and a data string, e.g. http://localhost:8080/ 'mydata to post'\nReturns the body response. Use -v to get headers")
-		fmt.Println("optional -contenttype flag can specify mime type of content being posted. defaults to text/plain")
-		return nil
-	}
-
 	if pc.ContentType == "" {
 		pc.ContentType = "text/plain"
 	}
@@ -116,14 +112,5 @@ func writePresponse(r *http.Response, out io.Writer) error {
 	if _, err = os.Stdout.Write(by); err != nil {
 		return err
 	}
-	return nil
-}
-func ShowHelp() error {
-	fmt.Printf("%s get <url>\n", path.Base(os.Args[0]))
-	fmt.Printf("%s post <url> <data>\n", path.Base(os.Args[0]))
-	fmt.Println("get\t\tgets from the given URL")
-	fmt.Println("post\t\tposts to the given URL, the following string")
-	fmt.Println("use -contenttype (-ct) to specify a content type for posting")
-	fmt.Println("use -verbose (-v) to putput the response headers for both get and post")
 	return nil
 }

@@ -36,11 +36,17 @@ func CallFunc(i interface{}, args ...string) error {
 	if !IsFunc(i) {
 		return fmt.Errorf("Not a function")
 	}
-	// Check for unknown flags
-	fgs := flags.NewFlags(false)
-	if err := fgs.Apply(args...); err != nil {
-		return err
-	}
+
+	/*
+		Taken care of by globalflags
+		fgs := flags.Flags{}
+		var err error
+		args, err = fgs.Apply(args...)
+		if err != nil {
+			return err
+		}
+
+	*/
 
 	// parse args into parameters
 	sig, err := NewSignature(i)
@@ -104,11 +110,10 @@ func CallMethod(i interface{}, args ...string) error {
 	ns := reflect.New(reflect.TypeOf(i).In(0))
 	md := ns.MethodByName(FuncName(i, false))
 
-	flgs, err := flags.NewStructFlags(ns)
+	flgs := flags.NewFlagsFromStruct(ns)
+	var err error
+	args, err = flgs.Apply(args...)
 	if err != nil {
-		return err
-	}
-	if err := flgs.Apply(args...); err != nil {
 		return err
 	}
 
@@ -117,7 +122,7 @@ func CallMethod(i interface{}, args ...string) error {
 	if err != nil {
 		return err
 	}
-	inVals, err := ParseParameters(sig, flgs.Parameters())
+	inVals, err := ParseParameters(sig, args)
 	if err != nil {
 		return err
 	}

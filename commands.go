@@ -18,15 +18,17 @@ import (
 	"fmt"
 	"github.com/eurozulu/commandgo/flags"
 	"github.com/eurozulu/commandgo/functions"
+	"github.com/eurozulu/commandgo/help"
 	"os"
 	"path"
 	"strings"
 )
 
-var globalFlags = flags.NewFlags(true)
-
 // Commands maps one or more 'command' strings to methods and/or functions on a mapped struct.
 type Commands map[string]interface{}
+
+// help automatically mapped into global fla
+var helpRequested bool
 
 // Run attempts to call the mapped method or function, using the first given argument as the key to the command map.
 // If the given key is found, the remaining arguments are parsed into flags and parameters before the mapped method/func is called.
@@ -35,11 +37,15 @@ func (cmds Commands) Run(args ...string) error {
 	if len(args) > 0 && args[0] == os.Args[0] {
 		args = args[1:]
 	}
-	if err := globalFlags.Apply(args...); err != nil {
+
+	flags.GlobalFlags[help.HelpFlagShort] = &helpRequested
+	flags.GlobalFlags[help.HelpFlagFull] = &helpRequested
+
+	var err error
+	args, err = flags.GlobalFlags.Apply(args...)
+	if err != nil {
 		return err
 	}
-	// adjust the arguments with any global flags removed
-	args = globalFlags.Parameters()
 
 	// use first arg as the command, if it exists. (Can be empty, is an empty mapping exists)
 	var arg string
@@ -47,24 +53,25 @@ func (cmds Commands) Run(args ...string) error {
 		arg = args[0]
 		args = args[1:]
 	}
-	cmd, ok := cmds.findCommand(arg)
+
+	if helpRequested {
+		fmt.Println(help.Help(arg))
+		return nil
+	}
+
+	cmd, ok := findCommand(arg, cmds)
 	if !ok {
 		if arg == "" {
 			return fmt.Errorf("no command given.  specify a command: %s <command>", path.Base(os.Args[0]))
 		}
 		return fmt.Errorf("'%s' is not a known command", arg)
 	}
-	i, ok := cmds[cmd]
-	if !ok {
-		return fmt.Errorf("CONFIG ERROR: command '%s' (%s) is not mapped", arg, cmd)
-	}
+
+	i := cmds[cmd]
 	if i == nil {
 		return fmt.Errorf("CONFIG ERROR: command '%s' (%s) is mapped to a nil value", arg, cmd)
 	}
 
-	if IsHelpCommand(i) {
-		return CallHelpCommand(i, cmds, args...)
-	}
 	if functions.IsMethod(i) {
 		return functions.CallMethod(i, args...)
 	}
@@ -74,22 +81,13 @@ func (cmds Commands) Run(args ...string) error {
 	return fmt.Errorf("CONFIG ERROR: %v is an unknown type of function or method", i)
 }
 
-// findCommand looks through the map keys in non case sensative search
-// returns the case sensative key if found or empty if not present
-func (cmds Commands) findCommand(arg string) (string, bool) {
-	for k := range cmds {
+// findCommand looks through the given maps keys in non case sensitive search
+// returns the case sensitive key if found or empty if not present
+func findCommand(arg string, m map[string]interface{}) (string, bool) {
+	for k := range m {
 		if strings.EqualFold(k, arg) {
 			return k, true
 		}
 	}
 	return "", false
-}
-
-// AddFlag adds the given pointer as a global named flag.
-// v must be a pointer, names must contain one or more names to give that flag.
-// Will panic if v is nil, contains a nil value or is not a pointer, or names is empty
-func AddFlag(v interface{}, names ...string) {
-	if err := globalFlags.AddFlag(v, names...); err != nil {
-		panic(err)
-	}
 }
