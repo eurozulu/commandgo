@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"commandgo/help"
 	"fmt"
-	"github.com/eurozulu/commandgo/help"
 	"html/template"
 	"io/ioutil"
 	"log"

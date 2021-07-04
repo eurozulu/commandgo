@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"bytes"
@@ -24,6 +24,9 @@ type URLGet struct {
 type URLPost struct {
 	// ContentType defines the format of the data being posted
 	ContentType string
+
+	// Show the response headers
+	ShowHeaders bool
 
 	LocalFilePermissions os.FileMode
 }
@@ -71,17 +74,32 @@ func (g *URLGet) GetLocal(p string) (string, error) {
 	return string(by), nil
 }
 
-func (p *URLPost) Post(u *url.URL, data []byte) (int, string, error) {
-	r, err := http.Post(u.String(), p.ContentType, bytes.NewReader(data))
+func (p *URLPost) Post(u *url.URL, data string) (int, string, error) {
+	r, err := http.Post(u.String(), p.ContentType, strings.NewReader(data))
 	if err != nil {
 		return http.StatusInternalServerError, "", err
 	}
 
+	out := bytes.NewBuffer(nil)
+	if Verbose {
+		out.WriteString(u.String())
+		out.WriteRune('\t')
+		out.WriteString(fmt.Sprintf("%d\t%s", r.StatusCode, r.Status))
+	}
+	if p.ShowHeaders || Verbose {
+		out.WriteString("Headers:\n")
+		for k, v := range r.Header {
+			out.WriteString(k)
+			out.WriteString(" = ")
+			out.WriteString(strings.Join(v, ", "))
+			out.WriteRune('\n')
+		}
+		out.WriteRune('\n')
+	}
 	resp, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return 0, "", err
 	}
-
 	return r.StatusCode, string(resp), nil
 }
 
