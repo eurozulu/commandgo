@@ -20,7 +20,6 @@ import (
 	"log"
 )
 
-
 const fullVersion = `
 Copyright 2020 Rob Gilham
 
@@ -36,7 +35,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 `
 
-
 func main() {
 	var g = &URLGet{}
 	var p = &URLPost{LocalFilePermissions: 0640}
@@ -45,7 +43,7 @@ func main() {
 		// top level flags and commands, available on all commands, map to global variables and functions
 		"--verbose": &Verbose,
 		"-v":        &Verbose,
-		"version":     showAbout,
+		"version":   showAbout,
 		"":          showAbout,
 
 		// map the get command to the URLGet instance, using default "" for Get method.

@@ -1,4 +1,4 @@
-package commandgo_7
+package commandgo
 
 import (
 	"commandgo-7/functions"
