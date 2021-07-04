@@ -1,8 +1,8 @@
 package commandgo
 
 import (
-	"commandgo-7/functions"
-	"commandgo-7/values"
+	"commandgo/functions"
+	"commandgo/valuetyping"
 	"fmt"
 	"os"
 	"reflect"
@@ -60,7 +60,7 @@ func (c Commands) applyAssignments(keys []string, args ...string) ([]string, err
 
 		var val string
 		// Special case for bool assignments.  No value required, default to true
-		if values.IsKind(v, reflect.Bool) {
+		if valuetyping.IsKind(v, reflect.Bool) {
 			val = strconv.FormatBool(true)
 			// check following arg parses as bool, otherwise ignore it
 			if i+1 < len(args) {
@@ -80,7 +80,7 @@ func (c Commands) applyAssignments(keys []string, args ...string) ([]string, err
 			arg = args[i]
 		}
 
-		if err := values.SetValue(v, val); err != nil {
+		if err := valuetyping.SetValue(v, val); err != nil {
 			return nil, err
 		}
 	}

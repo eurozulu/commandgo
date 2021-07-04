@@ -15,7 +15,7 @@
 package functions
 
 import (
-	"commandgo-7/values"
+	"commandgo/valuetyping"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -25,7 +25,7 @@ import (
 // Checks if given interface is a func.
 // will be true for both global functions and methods.
 func IsFunc(i interface{}) bool {
-	return values.IsKind(i, reflect.Func)
+	return valuetyping.IsKind(i, reflect.Func)
 }
 
 // Checks if the given interface is a method.
@@ -71,7 +71,6 @@ func CallFunc(i interface{}, args ...string) ([]interface{}, error) {
 	outVals := reflect.ValueOf(i).Call(inVals)
 
 	// check if an error returned
-	// TODO: review how to handle non error return values, if at all.
 	errInterface := reflect.TypeOf((*error)(nil)).Elem()
 	var values []interface{}
 	err = nil
@@ -86,7 +85,6 @@ func CallFunc(i interface{}, args ...string) ([]interface{}, error) {
 	}
 	return values, err
 }
-
 
 // Get the function name if the given interface is a func.
 // If not a func or is nil, , returns empty string
@@ -110,4 +108,3 @@ func FuncName(i interface{}, withPackage bool) string {
 	}
 	return fns[len(fns)-1]
 }
-

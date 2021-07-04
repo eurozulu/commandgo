@@ -15,7 +15,7 @@
 package main
 
 import (
-	commandgo_7 "commandgo-7"
+	"commandgo"
 	"fmt"
 	"log"
 )
@@ -39,7 +39,7 @@ func main() {
 	var g = &URLGet{}
 	var p = &URLPost{LocalFilePermissions: 0640}
 
-	var cmds = commandgo_7.Commands{
+	var cmds = commandgo.Commands{
 		// top level flags and commands, available on all commands, map to global variables and functions
 		"--verbose": &Verbose,
 		"-v":        &Verbose,
@@ -47,7 +47,7 @@ func main() {
 		"":          showAbout,
 
 		// map the get command to the URLGet instance, using default "" for Get method.
-		"get": commandgo_7.Commands{
+		"get": commandgo.Commands{
 			"":          g.Get,
 			"local":     g.GetLocal,
 			"--headers": &g.ShowHeaders,
@@ -55,7 +55,7 @@ func main() {
 		},
 
 		// map the post command to the URLPost instance, using default "" on Post method.
-		"post": commandgo_7.Commands{
+		"post": commandgo.Commands{
 			"":             p.Post,
 			"local":        p.PostLocal,
 			"content-type": &p.ContentType,

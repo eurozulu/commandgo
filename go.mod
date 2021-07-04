@@ -1,3 +1,3 @@
-module commandgo-7
+module commandgo
 
 go 1.16

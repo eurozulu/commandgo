@@ -16,7 +16,7 @@ package functions
 
 import (
 	"bytes"
-	"commandgo-7/values"
+	"commandgo/valuetyping"
 	"fmt"
 	"reflect"
 	"strings"
@@ -42,7 +42,7 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 			continue
 
 		} else if i < len(args) {
-			val, err = values.ValueFromString(args[i], pt)
+			val, err = valuetyping.ValueFromString(args[i], pt)
 		} else {
 			return nil, fmt.Errorf("missing argument %d, requires a %s value", i+1, pt.String())
 		}
@@ -58,11 +58,11 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 	return vals, nil
 }
 
-// variadicParams parses the given string slice int a slice of values of the given type,
+// variadicParams parses the given string slice int a slice of valuetyping of the given type,
 func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 	vals := make([]reflect.Value, len(args))
 	for i, arg := range args {
-		val, err := values.ValueFromString(arg, t)
+		val, err := valuetyping.ValueFromString(arg, t)
 		if err != nil { // failed to parse as correct type, not a match
 			return nil, fmt.Errorf("parameter %v could not be parsed as a %v", arg, t.String())
 		}
@@ -77,7 +77,6 @@ type Signature struct {
 	ReturnTypes []reflect.Type
 	IsVariadic  bool
 }
-
 
 func (s Signature) String() string {
 	ps := s.listTypes(s.ParamTypes)

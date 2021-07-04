@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package values
+package valuetyping
 
 import (
 	"encoding"
