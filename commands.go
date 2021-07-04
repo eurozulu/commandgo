@@ -1,93 +1,130 @@
-// Copyright 2020 Rob Gilham
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-package commandgo
+package commandgo_7
 
 import (
+	"commandgo-7/functions"
+	"commandgo-7/values"
 	"fmt"
-	"github.com/eurozulu/commandgo/flags"
-	"github.com/eurozulu/commandgo/functions"
-	"github.com/eurozulu/commandgo/help"
 	"os"
-	"path"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
-// Commands maps one or more 'command' strings to methods and/or functions on a mapped struct.
 type Commands map[string]interface{}
 
-// help automatically mapped into global fla
-var helpRequested bool
-
-// Run attempts to call the mapped method or function, using the first given argument as the key to the command map.
-// If the given key is found, the remaining arguments are parsed into flags and parameters before the mapped method/func is called.
-func (cmds Commands) Run(args ...string) error {
-	// strip leading arg if it's program name
-	if len(args) > 0 && args[0] == os.Args[0] {
-		args = args[1:]
-	}
-
-	flags.GlobalFlags[help.HelpFlagShort] = &helpRequested
-	flags.GlobalFlags[help.HelpFlagFull] = &helpRequested
-
-	var err error
-	args, err = flags.GlobalFlags.Apply(args...)
-	if err != nil {
-		return err
-	}
-
-	// use first arg as the command, if it exists. (Can be empty, is an empty mapping exists)
-	var arg string
-	if len(args) > 0 {
-		arg = args[0]
-		args = args[1:]
-	}
-
-	if helpRequested {
-		fmt.Println(help.Help(arg))
-		return nil
-	}
-
-	cmd, ok := findCommand(arg, cmds)
-	if !ok {
-		if arg == "" {
-			return fmt.Errorf("no command given.  specify a command: %s <command>", path.Base(os.Args[0]))
-		}
-		return fmt.Errorf("'%s' is not a known command", arg)
-	}
-
-	i := cmds[cmd]
-	if i == nil {
-		return fmt.Errorf("CONFIG ERROR: command '%s' (%s) is mapped to a nil value", arg, cmd)
-	}
-
-	if functions.IsMethod(i) {
-		return functions.CallMethod(i, args...)
-	}
-	if functions.IsFunc(i) {
-		return functions.CallFunc(i, args...)
-	}
-	return fmt.Errorf("CONFIG ERROR: %v is an unknown type of function or method", i)
+func (c Commands) RunArgs() ([]interface{}, error) {
+	return c.Run(os.Args[1:]...)
 }
 
-// findCommand looks through the given maps keys in non case sensitive search
-// returns the case sensitive key if found or empty if not present
-func findCommand(arg string, m map[string]interface{}) (string, bool) {
-	for k := range m {
+func (c Commands) Run(args ...string) ([]interface{}, error) {
+	// first perform all assignments at this level of command, removing 'consumed' args from the command line.
+	assKeys := c.assignments()
+	cargs, err := c.applyAssignments(assKeys, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Establish the command key.
+	// If first carg known, use it as key and remaining cargs are parameters
+	// if not known, use default "" key and use whole cargs as params
+	var cmdKey string
+	if len(cargs) > 0 {
+		var ok bool
+		cmdKey, ok = c.commandKey(cargs[0])
+		if ok {
+			cargs = cargs[1:]
+		}
+	}
+	cmd, ok := c[cmdKey]
+	if !ok {
+		return nil, fmt.Errorf("unknown command '%s'", cmdKey)
+	}
+
+	// Check if command is a sub map
+	cm, ok := cmd.(Commands)
+	if ok {
+		return cm.Run(cargs...)
+	}
+	return functions.CallFunc(cmd, cargs...)
+}
+
+func (c Commands) applyAssignments(keys []string, args ...string) ([]string, error) {
+	var unused []string
+	for i, arg := range args {
+		ki := indexString(arg, keys)
+		if ki < 0 {
+			unused = append(unused, arg)
+			continue
+		}
+		v := c[keys[ki]]
+
+		var val string
+		// Special case for bool assignments.  No value required, default to true
+		if values.IsKind(v, reflect.Bool) {
+			val = strconv.FormatBool(true)
+			// check following arg parses as bool, otherwise ignore it
+			if i+1 < len(args) {
+				_, err := strconv.ParseBool(args[i+1])
+				if err == nil {
+					// following arg is a bool value, so use that
+					i++
+					val = args[i]
+				}
+			}
+		} else {
+			// not bool assignment, must have value
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("'%s' has no value", arg)
+			}
+			i++
+			arg = args[i]
+		}
+
+		if err := values.SetValue(v, val); err != nil {
+			return nil, err
+		}
+	}
+	return unused, nil
+}
+
+func (c Commands) commandKey(arg string) (string, bool) {
+	for k := range c {
 		if strings.EqualFold(k, arg) {
 			return k, true
 		}
 	}
 	return "", false
+}
+
+func (c Commands) assignments() []string {
+	var keys []string
+	for k, v := range c {
+		vo := reflect.TypeOf(v)
+		if vo.Kind() != reflect.Ptr || vo.Kind() == reflect.Func {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (c Commands) functions() []string {
+	var keys []string
+	for k, v := range c {
+		vo := reflect.TypeOf(v)
+		if vo.Kind() != reflect.Func {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func indexString(s string, in []string) int {
+	for i, ins := range in {
+		if strings.EqualFold(ins, s) {
+			return i
+		}
+	}
+	return -1
 }

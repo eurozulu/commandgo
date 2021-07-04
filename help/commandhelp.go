@@ -11,7 +11,7 @@ const (
 	HelpFlagFull  = "help"
 )
 
-// HelpSubjects are the globally available help subjects available
+// HelpSubjects are the globally available help subjects
 var HelpSubjects []*HelpSubject
 
 func Subject(name string) *HelpSubject {

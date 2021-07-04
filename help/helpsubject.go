@@ -12,7 +12,6 @@ import (
 // the 'global' subject is called 'main', containing the available global commands and flags.
 // Each struct mapped to a command is grouped into its own subject, with all its flags (fields) inthat group.
 type HelpSubject struct {
-	Package  string
 	Name     string
 	Comment  string
 	Commands map[string]string
@@ -55,10 +54,8 @@ func NewHelpSubjects(pkgPath string) ([]*HelpSubject, error) {
 	return groups, nil
 }
 
-func NewHelpSubject(pkgName string, comment string) *HelpSubject {
-	name := strings.ToLower(pkgName)
+func NewHelpSubject(name string, comment string) *HelpSubject {
 	return &HelpSubject{
-		Package:  pkgName,
 		Name:     name,
 		Comment:  comment,
 		Commands: map[string]string{},

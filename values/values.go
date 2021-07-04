@@ -1,6 +1,6 @@
 // Copyright 2020 Rob Gilham
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Apache License, Version newtype.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -215,18 +215,31 @@ func stringFromString(s string, t reflect.Type) (interface{}, error) {
 	return sv.Elem().Interface(), nil
 }
 
+func IsKind(i interface{}, k reflect.Kind) bool {
+	t := reflect.ValueOf(i)
+	if t.Kind() == reflect.Ptr {
+		return IsKind(t.Elem().Interface(), k)
+	}
+	return t.Kind() == k
+}
+
 // Sets the given receiver with the given value.
 // Assigns the value or a pointer to it, depending on the reciever type
-func SetValue(recv reflect.Value, val interface{}) {
-	v := reflect.ValueOf(val)
+func SetValue(r interface{}, val string) error {
+	iVal, err := ValueFromString(val, reflect.TypeOf(r))
+	if err != nil {
+		return err
+	}
+
+	recv := reflect.ValueOf(r)
+	if recv.Type().Kind() == reflect.Ptr {
+		recv = recv.Elem()
+	}
+
+	v := reflect.ValueOf(iVal)
 	if v.Type().Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-
-	// Assign value.  Check if receiver is expecting a pointer or not.
-	if recv.Type().Kind() == reflect.Ptr {
-		recv.Elem().Set(v)
-	} else {
-		recv.Set(v)
-	}
+	recv.Set(v)
+	return nil
 }

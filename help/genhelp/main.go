@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	outputName    = "help.go"
+	outputName    = "commandhelp.go"
 	groupTemplate = `
 // Generated code
 // Do not edit directly as may be overwritten
@@ -24,17 +24,14 @@ package {{.package}}
 import "github.com/eurozulu/commandgo/help"
 
 {{range $subject := .subjects}}
-var _{{.Name}} = help.HelpSubject{
+var {{.Name}}Help = help.HelpSubject{
 	Name:     "{{.Name}},",
 	Comment:  "{{ clean .Comment -}},",
 	Commands: map[string]string{
-		{{range $cmd, $cmt := .Commands}} "{{$cmd}}": "{{clean $cmt}}",
-		{{end}}
+		{{range $cmd, $cmt := .Commands}} "{{$cmd}}": "{{clean $cmt}}",{{end}}
 	},
 	Flags: map[string]string{
-		{{range $flg, $cmt := .Flags}}
-			 "{{$flg}}": "{{clean $cmt}}",
-		{{end}}
+		{{range $flg, $cmt := .Flags}} "{{$flg}}": "{{clean $cmt}}",{{end}}
 	},
 }
 {{end}}
@@ -47,9 +44,10 @@ func main() {
 		srcPath = os.Args[1]
 	}
 
+	//help.ScanSource(srcPath)
 	var outPath = path.Join(srcPath, outputName)
-	if len(os.Args) > 1 {
-		outPath = os.Args[1]
+	if len(os.Args) > 2 {
+		outPath = os.Args[2]
 	}
 	err := checkOutputPath(outPath)
 	if err != nil {

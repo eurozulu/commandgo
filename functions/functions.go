@@ -1,6 +1,6 @@
 // Copyright 2020 Rob Gilham
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Apache License, Version newtype.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,8 +15,8 @@
 package functions
 
 import (
+	"commandgo-7/values"
 	"fmt"
-	"github.com/eurozulu/commandgo/flags"
 	"reflect"
 	"runtime"
 	"strings"
@@ -25,52 +25,7 @@ import (
 // Checks if given interface is a func.
 // will be true for both global functions and methods.
 func IsFunc(i interface{}) bool {
-	return reflect.TypeOf(i).Kind() == reflect.Func
-}
-
-// CallFunc calls the given function interface using the given arguments.
-// interface must be a function (IsFunc returns true).
-// function is called as a global function, assuming all parameters are inputs.
-// If called with a method, will assume the receiver structure is a parameter.
-func CallFunc(i interface{}, args ...string) error {
-	if !IsFunc(i) {
-		return fmt.Errorf("Not a function")
-	}
-
-	/*
-		Taken care of by globalflags
-		fgs := flags.Flags{}
-		var err error
-		args, err = fgs.Apply(args...)
-		if err != nil {
-			return err
-		}
-
-	*/
-
-	// parse args into parameters
-	sig, err := NewSignature(i)
-	if err != nil {
-		return err
-	}
-	inVals, err := ParseParameters(sig, args)
-	if err != nil {
-		return err
-	}
-	outVals := reflect.ValueOf(i).Call(inVals)
-
-	// check if an error returned
-	// TODO: review how to handle non error return values, if at all.
-	errInterface := reflect.TypeOf((*error)(nil)).Elem()
-	for _, ov := range outVals {
-		if (ov.Kind() != reflect.Interface) || ov.IsNil() {
-			continue
-		}
-		if ov.Type().Implements(errInterface) {
-			return ov.Interface().(error)
-		}
-	}
-	return nil
+	return values.IsKind(i, reflect.Func)
 }
 
 // Checks if the given interface is a method.
@@ -96,51 +51,42 @@ func IsMethod(i interface{}) bool {
 	return true
 }
 
-// CallMethod calls the given method using the given arguments.
-// Like CallFunc, args are parsed into parameters for the call and therefore must line up in terms of
-// number, order and type.
-// The first parameter will be used as the receiver structures, a new instance of which is created,
-// and any flags values applied to its matching fields, prior to the method being called.
-func CallMethod(i interface{}, args ...string) error {
-	if !IsMethod(i) {
-		return fmt.Errorf("Not a method!")
+// CallFunc calls the given function interface using the given arguments.
+// interface must be a function (IsFunc returns true).
+// function is called as a global function, assuming all parameters are inputs.
+// If called with a method, will assume the receiver structure is a parameter.
+func CallFunc(i interface{}, args ...string) ([]interface{}, error) {
+	if !IsFunc(i) {
+		return nil, fmt.Errorf("Not a function")
 	}
-
-	// new instance of struct and get ref to method
-	ns := reflect.New(reflect.TypeOf(i).In(0))
-	md := ns.MethodByName(FuncName(i, false))
-
-	flgs := flags.NewFlagsFromStruct(ns)
-	var err error
-	args, err = flgs.Apply(args...)
-	if err != nil {
-		return err
-	}
-
 	// parse args into parameters
 	sig, err := NewSignature(i)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	inVals, err := ParseParameters(sig, args)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	outVals := md.Call(inVals)
+	outVals := reflect.ValueOf(i).Call(inVals)
 
 	// check if an error returned
+	// TODO: review how to handle non error return values, if at all.
 	errInterface := reflect.TypeOf((*error)(nil)).Elem()
+	var values []interface{}
+	err = nil
 	for _, ov := range outVals {
-		if (ov.Kind() != reflect.Interface) || ov.IsNil() {
+		if ov.Kind() == reflect.Interface && ov.Type().Implements(errInterface) {
+			if !ov.IsNil() {
+				err = ov.Interface().(error)
+			}
 			continue
 		}
-		if ov.Type().Implements(errInterface) {
-			return ov.Interface().(error)
-		}
+		values = append(values, ov.Interface())
 	}
-	return nil
+	return values, err
 }
+
 
 // Get the function name if the given interface is a func.
 // If not a func or is nil, , returns empty string
@@ -164,3 +110,4 @@ func FuncName(i interface{}, withPackage bool) string {
 	}
 	return fns[len(fns)-1]
 }
+

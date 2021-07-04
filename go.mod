@@ -1,4 +1,3 @@
-module github.com/eurozulu/commandgo
+module commandgo-7
 
-go 1.15
-
+go 1.16

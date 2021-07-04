@@ -1,6 +1,6 @@
 // Copyright 2020 Rob Gilham
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Apache License, Version newtype.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,9 +15,11 @@
 package functions
 
 import (
+	"bytes"
+	"commandgo-7/values"
 	"fmt"
-	"github.com/eurozulu/commandgo/values"
 	"reflect"
+	"strings"
 )
 
 // ParseParameters parses the given argument slice of strings into a list of Values of the correct type
@@ -50,7 +52,8 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 		vals = append(vals, reflect.ValueOf(val))
 	}
 	if !sig.IsVariadic && len(vals) < len(args) {
-		return nil, fmt.Errorf("too many arguments.  %v expected, found %v", sig.String(), args)
+		pc := len(sig.ParamTypes)
+		return nil, fmt.Errorf("too many arguments.  %d expected, found %s", pc, strings.Join(args, " "))
 	}
 	return vals, nil
 }
@@ -66,4 +69,60 @@ func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 		vals[i] = reflect.ValueOf(val)
 	}
 	return vals, nil
+}
+
+// Signature represents the signature of a method or func, both its parameters and its return types.
+type Signature struct {
+	ParamTypes  []reflect.Type
+	ReturnTypes []reflect.Type
+	IsVariadic  bool
+}
+
+
+func (s Signature) String() string {
+	ps := s.listTypes(s.ParamTypes)
+	if len(s.ReturnTypes) > 0 {
+		ps = fmt.Sprintf("(%s) (%s)", ps, s.listTypes(s.ReturnTypes))
+	}
+	return ps
+}
+
+func (s Signature) listTypes(t []reflect.Type) string {
+	bf := bytes.NewBuffer(nil)
+	for i, p := range t {
+		if i > 0 {
+			bf.WriteString(", ")
+		}
+		bf.WriteString(p.String())
+	}
+	return bf.String()
+}
+
+// NewSignature creates a Signature of the given func or Name
+func NewSignature(i interface{}) (*Signature, error) {
+	if !IsFunc(i) {
+		return nil, fmt.Errorf("not a function")
+	}
+	isMethod := IsMethod(i)
+	t := reflect.TypeOf(i)
+	var params []reflect.Type
+	var index int
+	if isMethod {
+		// Skip receiver param on methods
+		index++
+	}
+	in := t.NumIn()
+	for ; index < in; index++ {
+		params = append(params, t.In(index))
+	}
+	out := t.NumOut()
+	returns := make([]reflect.Type, out)
+	for i := 0; i < out; i++ {
+		returns[i] = t.Out(i)
+	}
+	return &Signature{
+		ParamTypes:  params,
+		ReturnTypes: returns,
+		IsVariadic:  t.IsVariadic(),
+	}, nil
 }
