@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"commandgo/help"
+	"commandgo"
+	"commandgo/help/genhelp/generate"
+	"commandgo/help/genhelp/maps"
+	"commandgo/help/genhelp/misc"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,97 +14,99 @@ import (
 )
 
 const (
-	outputName    = "commandhelp.go"
-	groupTemplate = `
-// Generated code
-// Do not edit directly as may be overwritten
-
-package {{.package}}
-
-import "github.com/eurozulu/commandgo/help"
-
-{{range $subject := .subjects}}
-var {{.Name}}Help = help.HelpSubject{
-	Name:     "{{.Name}},",
-	Comment:  "{{ clean .Comment -}},",
-	Commands: map[string]string{
-		{{range $cmd, $cmt := .Commands}} "{{$cmd}}": "{{clean $cmt}}",{{end}}
-	},
-	Flags: map[string]string{
-		{{range $flg, $cmt := .Flags}} "{{$flg}}": "{{clean $cmt}}",{{end}}
-	},
-}
-{{end}}
-`
+	defaultSrcPath     = "./..."
+	defaultOutputName  = "cghelp.go"
+	defaultPackageName = "main"
 )
 
+// ForceOverwrite when true will overwrite any existing maps file named in the Outname. (cghelp.go by default)
+// When not present/false throws an os.Exists error if file already exists.
+var ForceOverwrite bool
+
+// Outname specifies the name of the generated go file containing help.  defaults to 'cghelp.go'.
+// if the given name does not end with '.go', this will be added to the name.
+var Outname = defaultOutputName
+
+// PackageName specifies the package the generated file should be written into. Defaults to 'main'
+// When specifying packages other than main, you must ensure that package is referenced somewhere in your application.
+// Help relies on the 'init' function to register itself with the help system.  If unsure, leave it in main.``
+var PackageName = defaultPackageName
+
 func main() {
-	var srcPath = "./"
-	if len(os.Args) > 1 {
-		srcPath = os.Args[1]
-	}
+	cmd := commandgo.Commands{
+		// one and only, default command
+		"": MakeHelp,
 
-	//help.ScanSource(srcPath)
-	var outPath = path.Join(srcPath, outputName)
-	if len(os.Args) > 2 {
-		outPath = os.Args[2]
+		"-p": &PackageName,
+		"-f": &ForceOverwrite,
+		"-o": &Outname,
 	}
-	err := checkOutputPath(outPath)
+	out, err := cmd.RunArgs()
 	if err != nil {
 		log.Fatalln(err)
 	}
+	for _, oi := range out {
+		fmt.Println(oi)
+	}
+}
 
-	hgs, err := help.NewHelpSubjects(srcPath)
+// MakeHelp generates a new help maps file containing the comments extracted from the files in the given maps directories.
+// may specify one or more directory paths which contain the maps files to scan.  appending '...' to any path indicates to include all subdirectories of that path.
+// maps locations should include all the code the command map maps into. i.e. the variables, structs, methods and func being mapped into.
+func MakeHelp(src ...string) error {
+	// check arguments, insert default src if empty and check Outname has .go
+	if len(src) == 0 {
+		src = []string{defaultSrcPath}
+	}
+	srcPaths, err := misc.collectSrcDirectories(src)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
-	by := writeGroups("main", hgs)
-	if err := ioutil.WriteFile(outPath, by, 0644); err != nil {
-		log.Fatalln(err)
+	if len(srcPaths) == 0 {
+		return fmt.Errorf("no maps files found in directorys: %s", strings.Join(srcPaths, " : "))
 	}
-}
 
-func writeGroups(pkgName string, grps []*help.HelpSubject) []byte {
-	fm := template.FuncMap{
-		"clean": cleanComment,
+	if !strings.HasSuffix(strings.ToLower(Outname), ".go") {
+		Outname = strings.Join([]string{Outname, "go"}, ".")
 	}
-	t := template.New("help group template").Funcs(fm)
-	tm, err := t.Parse(groupTemplate)
+
+	pkgPath, err := misc.findPackage(PackageName, srcPaths)
 	if err != nil {
-		log.Fatalln(err)
+		return err
+	}
+	outPath := path.Join(pkgPath, Outname)
+	if err = checkOutPath(outPath); err != nil {
+		return err
 	}
 
-	out := bytes.NewBuffer(nil)
-	m := map[string]interface{}{}
-	m["package"] = pkgName
-	m["subjects"] = grps
-	if err = tm.Execute(out, m); err != nil {
-		log.Fatalln(err)
+	hgs, err := maps.makeHelp(srcPaths)
+	if err != nil {
+		return err
 	}
-	return out.Bytes()
+	if len(hgs) == 0 {
+		return fmt.Errorf("no maps files containing command maps were found")
+	}
+
+	by, err := generate.WriteTemplate(PackageName, hgs)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(outPath, by, 0644)
 }
 
-func cleanComment(s string) string {
-	return strings.Replace(s, "\n", "\\n", -1)
-}
-
-func checkOutputPath(p string) error {
+// checkOutPath creates the path to the given path and checks if the filename exists
+func checkOutPath(p string) error {
+	if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
+		return err
+	}
 	_, err := os.Stat(p)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err == nil {
+		if !ForceOverwrite {
+			return fmt.Errorf("%s already exists", p)
 		}
-		return err
 	}
-	fmt.Printf("%s already exists.  Overwrite?", p)
-	in := bufio.NewReader(os.Stdin)
-	s, err := in.ReadString('\n')
-	if err != nil {
-		return err
-	}
-	s = s[:len(s)-1]
-	if !strings.EqualFold(s, "y") && !strings.EqualFold(s, "yes") {
-		return os.ErrExist
-	}
-	return nil
+	return err
 }
