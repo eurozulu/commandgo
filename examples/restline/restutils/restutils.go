@@ -1,6 +1,6 @@
 // RestUtils is a simple example of an application having a command line interface applied to it.
 // It performs simple http requests based on the given arguments.
-package tools
+package restutils
 
 import (
 	"bytes"

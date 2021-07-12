@@ -16,12 +16,12 @@ package main
 
 import (
 	"commandgo"
-	"commandgo/examples/restline/tools"
+	"commandgo/examples/restline/restutils"
 	"fmt"
 	"log"
 )
 
-// Sample data for additional info using showAbout. (To demo the Verbose flag usage)
+// Sample data for additional info using ShowAbout. (To demo the Verbose flag usage)
 const fullVersion = `
 Copyright 2020 Rob Gilham
 
@@ -39,16 +39,17 @@ limitations under the License.
 
 func main() {
 	// These are our application model objects we will be mapping into
-	var g = &tools.URLGet{LocalFileRoot: "./content"}
-	var p = &tools.URLPost{LocalFileRoot: "./content", LocalFilePermissions: 0640}
+	var g = &restutils.URLGet{LocalFileRoot: "./content"}
+	var p = &restutils.URLPost{LocalFileRoot: "./content", LocalFilePermissions: 0640}
 
 	// top level flags and commands, available on all commands, usually map to global variables and functions
 	var cmds = commandgo.Commands{
-		"--verbose": &tools.Verbose,
-		"-v":        &tools.Verbose,
-		"version":   showAbout,
+		"--verbose": &restutils.Verbose,
+		"-v":        &restutils.Verbose,
+		"version":   ShowAbout,
+
 		// Default mapping to show about.  Invoked when no arguments are given
-		"": showAbout,
+		"": ShowAbout,
 
 		// map the 'get' command in subcommand so it has its own flags, seperate from the global flags.
 		// maps to the URLGet instance (g), using default "" mapping to the Get method.
@@ -87,12 +88,12 @@ func main() {
 	}
 }
 
-// showAbout gives version and copyright information about the application
+// ShowAbout gives version and copyright information about the application
 // A simple local function invoked on the root command map. (Also default, no arguments mapping)
 // Uses the Verbose flag to show full copyright data when true.
-func showAbout() string {
+func ShowAbout() string {
 	var fullText string
-	if tools.Verbose {
+	if restutils.Verbose {
 		fullText = fullVersion
 	}
 	return fmt.Sprintf("restline.  version 0.0\tcopyright 2021 eurozulu@github.com%s", fullText)
