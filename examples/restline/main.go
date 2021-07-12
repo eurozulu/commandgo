@@ -21,6 +21,7 @@ import (
 	"log"
 )
 
+// Sample data for additional info using showAbout. (To demo the Verbose flag usage)
 const fullVersion = `
 Copyright 2020 Rob Gilham
 
@@ -37,18 +38,22 @@ limitations under the License.
 `
 
 func main() {
-	var g = &tools.URLGet{}
-	var p = &tools.URLPost{LocalFilePermissions: 0640}
+	// These are our application model objects we will be mapping into
+	var g = &tools.URLGet{LocalFileRoot: "./content"}
+	var p = &tools.URLPost{LocalFileRoot: "./content", LocalFilePermissions: 0640}
 
+	// top level flags and commands, available on all commands, usually map to global variables and functions
 	var cmds = commandgo.Commands{
-		// top level flags and commands, available on all commands, usually map to global variables and functions
 		"--verbose": &tools.Verbose,
 		"-v":        &tools.Verbose,
 		"version":   showAbout,
-		"":          showAbout,
+		// Default mapping to show about.  Invoked when no arguments are given
+		"": showAbout,
 
-		// map the get command i logical group
-		// maps to the URLGet instance, using default "" for Get method.
+		// map the 'get' command in subcommand so it has its own flags, seperate from the global flags.
+		// maps to the URLGet instance (g), using default "" mapping to the Get method.
+		// Additional command "get local ..." maps to a second method on the same instance.
+		// Has a single assignment flag to show response headers, mapped twice for a short and long name.
 		"get": commandgo.Commands{
 			"":          g.Get,
 			"local":     g.GetLocal,
@@ -56,19 +61,21 @@ func main() {
 			"-I":        &g.ShowHeaders,
 		},
 
-		// map the post command to the URLPost instance, using default "" on Post method.
+		// map the post command to the URLPost instance (p), using default "" on Post method.
+		// Has two assignment flags mapped to multiple names, ContentType and LocalFilePermissions
 		"post": commandgo.Commands{
-			"":             p.Post,
-			"local":        p.PostLocal,
-			"content-type": &p.ContentType,
-			"contenttype":  &p.ContentType,
-			"ct":           &p.ContentType,
-			"permissions":  &p.LocalFilePermissions,
-			"perm":         &p.LocalFilePermissions,
-			"p":            &p.LocalFilePermissions,
+			"":               p.Post,
+			"local":          p.PostLocal,
+			"--content-type": &p.ContentType,
+			"--contenttype":  &p.ContentType,
+			"-ct":            &p.ContentType,
+			"--permissions":  &p.LocalFilePermissions,
+			"--perm":         &p.LocalFilePermissions,
+			"-p":             &p.LocalFilePermissions,
 		},
 	}
 
+	// Call using the os.CommandLine argument
 	r, err := cmds.RunArgs()
 	if err != nil {
 		log.Fatalln(err)
@@ -81,6 +88,8 @@ func main() {
 }
 
 // showAbout gives version and copyright information about the application
+// A simple local function invoked on the root command map. (Also default, no arguments mapping)
+// Uses the Verbose flag to show full copyright data when true.
 func showAbout() string {
 	var fullText string
 	if tools.Verbose {

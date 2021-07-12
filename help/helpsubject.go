@@ -1,76 +1,83 @@
 package help
 
 import (
-	"go/ast"
-	"go/doc"
-	"go/parser"
-	"go/token"
+	"fmt"
+	"sort"
 	"strings"
 )
 
-// HelpSubject is a logical grouping of commands and flags.
-// the 'global' subject is called 'main', containing the available global commands and flags.
-// Each struct mapped to a command is grouped into its own subject, with all its flags (fields) inthat group.
+// HelpItem is a NamedItem of help describing a single command, flag or grouping
+// Key is its principle name, the name by which this item is referred to.
+// Aliases are other names the same item is known by
+// Comment is the known information about the item.
+type HelpItem struct {
+	Key     string
+	Aliases []string
+	Comment string
+}
+
+// HelpSubject is a logical collection of HelpItems.
+// HelpItems are grouped by the command map they appear in.
 type HelpSubject struct {
-	Name     string
-	Comment  string
-	Commands map[string]string
-	Flags    map[string]string
+	Name      string
+	Comment   string
+	HelpItems []*HelpItem
 }
 
-func NewHelpSubjects(pkgPath string) ([]*HelpSubject, error) {
-	var groups []*HelpSubject
-
-	fs := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fs, pkgPath, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
-	for pn, f := range pkgs {
-		// get the docs for the current package
-		p := doc.New(f, pkgPath, 2)
-
-		gh := NewHelpSubject(pn, p.Doc)
-		groups = append(groups, gh)
-
-		for _, fn := range p.Funcs {
-			gh.Commands[strings.ToLower(fn.Name)] = fn.Doc
-		}
-		for _, v := range p.Vars {
-			gh.Flags[strings.ToLower(v.Names[0])] = v.Doc
-		}
-		for _, t := range p.Types {
-			// Each struct Type gets its own help group
-			tgh := NewHelpSubject(t.Name, t.Doc)
-			groups = append(groups, tgh)
-			for _, mt := range t.Methods {
-				tgh.Commands[strings.ToLower(mt.Name)] = mt.Doc
-			}
-			// Vars is empty on the Type, so need to iterate the ast node to get field (flag) comments
-			gatherFields(t.Decl, tgh.Flags)
-		}
-	}
-	return groups, nil
-}
-
-func NewHelpSubject(name string, comment string) *HelpSubject {
-	return &HelpSubject{
-		Name:     name,
-		Comment:  comment,
-		Commands: map[string]string{},
-		Flags:    map[string]string{},
-	}
-}
-
-func gatherFields(f ast.Node, m map[string]string) {
-	ast.Inspect(f, func(node ast.Node) bool {
-		t, ok := node.(*ast.StructType)
-		if ok {
-			for _, f := range t.Fields.List {
-				m[f.Names[0].Name] = f.Doc.Text()
-			}
-		}
-		return true
+func (hs HelpSubject) StringShort() string {
+	var items []string
+	sort.Slice(hs.HelpItems, func(i, j int) bool {
+		return strings.Compare(hs.HelpItems[i].Key, hs.HelpItems[j].Key) < 0
 	})
+	for _, hi := range hs.HelpItems {
+		if !hi.IsFlag() {
+			continue
+		}
+		items = append(items, hi.StringShort())
+	}
+	return strings.Join(items, "\n")
+}
+
+func (hs HelpSubject) String() string {
+	var items []string
+	sort.Slice(hs.HelpItems, func(i, j int) bool {
+		return strings.Compare(hs.HelpItems[i].Key, hs.HelpItems[j].Key) < 0
+	})
+	for _, hi := range hs.HelpItems {
+		items = append(items, hi.StringShort())
+	}
+	t := hs.Comment
+	if t != "" {
+		t = strings.Join([]string{t, "\n"}, "")
+	}
+	return fmt.Sprintf("%s%s", t, strings.Join(items, "\n"))
+}
+
+func (hi HelpItem) IsFlag() bool {
+	return strings.HasPrefix(hi.Key, "-")
+}
+
+func (hi HelpItem) IsName(name string) bool {
+	if strings.EqualFold(name, hi.Key) {
+		return true
+	}
+	for _, k := range hi.Aliases {
+		if strings.EqualFold(k, hi.Key) {
+			return true
+		}
+	}
+	return false
+}
+
+func (hi HelpItem) String() string {
+	var als string
+	if len(hi.Aliases) > 0 {
+		als = fmt.Sprintf("\naliases: %s", strings.Join(hi.Aliases, ", "))
+	}
+	return fmt.Sprintf("%s\t\t%s%s\n", hi.Key, hi.Comment, als)
+}
+
+func (hi HelpItem) StringShort() string {
+	cs := strings.SplitN(hi.Comment, "\n", 2)
+	return fmt.Sprintf("%s\t%s", hi.Key, cs[0])
 }

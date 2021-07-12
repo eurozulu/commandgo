@@ -16,7 +16,7 @@ package functions
 
 import (
 	"bytes"
-	"commandgo/valuetyping"
+	"commandgo/values"
 	"fmt"
 	"reflect"
 	"strings"
@@ -29,10 +29,10 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 	for i, pt := range sig.ParamTypes {
 		var val interface{}
 		var err error
-		// if last param and variadic, wrap final args into a single array
+		// if last param and variadic, wrap final arguments into a single array
 		if sig.IsVariadic && i == len(sig.ParamTypes)-1 {
 			if i < len(args) { // optional params provided
-				// Wrap remaining args in slice of the same type.
+				// Wrap remaining arguments in slice of the same type.
 				vps, err := variadicParams(args[i:], pt.Elem())
 				if err != nil {
 					return nil, err
@@ -42,7 +42,7 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 			continue
 
 		} else if i < len(args) {
-			val, err = valuetyping.ValueFromString(args[i], pt)
+			val, err = values.ValueFromString(args[i], pt)
 		} else {
 			return nil, fmt.Errorf("missing argument %d, requires a %s value", i+1, pt.String())
 		}
@@ -58,11 +58,11 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 	return vals, nil
 }
 
-// variadicParams parses the given string slice int a slice of valuetyping of the given type,
+// variadicParams parses the given string slice int a slice of values of the given type,
 func variadicParams(args []string, t reflect.Type) ([]reflect.Value, error) {
 	vals := make([]reflect.Value, len(args))
 	for i, arg := range args {
-		val, err := valuetyping.ValueFromString(arg, t)
+		val, err := values.ValueFromString(arg, t)
 		if err != nil { // failed to parse as correct type, not a match
 			return nil, fmt.Errorf("parameter %v could not be parsed as a %v", arg, t.String())
 		}
@@ -98,9 +98,10 @@ func (s Signature) listTypes(t []reflect.Type) string {
 }
 
 // NewSignature creates a Signature of the given func or Name
-func NewSignature(i interface{}) (*Signature, error) {
+// panics if given interface is not a function or method
+func NewSignature(i interface{}) *Signature {
 	if !IsFunc(i) {
-		return nil, fmt.Errorf("not a function")
+		panic("Not a function")
 	}
 	isMethod := IsMethod(i)
 	t := reflect.TypeOf(i)
@@ -123,5 +124,5 @@ func NewSignature(i interface{}) (*Signature, error) {
 		ParamTypes:  params,
 		ReturnTypes: returns,
 		IsVariadic:  t.IsVariadic(),
-	}, nil
+	}
 }

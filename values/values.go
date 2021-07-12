@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package valuetyping
+package values
 
 import (
 	"encoding"
@@ -77,6 +77,43 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("%s types are not supported as command line arguments", t.String())
 	}
+}
+
+func IsKind(i interface{}, k reflect.Kind) bool {
+	t := reflect.ValueOf(i)
+	if t.Kind() == reflect.Ptr {
+		return IsKind(t.Elem().Interface(), k)
+	}
+	return t.Kind() == k
+}
+
+func GetValue(r interface{}) interface{} {
+	t := reflect.TypeOf(r)
+	if t.Kind() == reflect.Ptr {
+		return GetValue(reflect.ValueOf(r).Elem().Interface())
+	}
+	return reflect.ValueOf(r).Interface()
+}
+
+// Sets the given receiver with the given value.
+// Assigns the value or a pointer to it, depending on the reciever type
+func SetValue(r interface{}, val string) error {
+	iVal, err := ValueFromString(val, reflect.TypeOf(r))
+	if err != nil {
+		return err
+	}
+
+	recv := reflect.ValueOf(r)
+	if recv.Type().Kind() == reflect.Ptr {
+		recv = recv.Elem()
+	}
+
+	v := reflect.ValueOf(iVal)
+	if v.Type().Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	recv.Set(v)
+	return nil
 }
 
 func structureFromString(s string, t reflect.Type) (interface{}, error) {
@@ -213,33 +250,4 @@ func stringFromString(s string, t reflect.Type) (interface{}, error) {
 	sv := reflect.New(t)
 	sv.Elem().SetString(s)
 	return sv.Elem().Interface(), nil
-}
-
-func IsKind(i interface{}, k reflect.Kind) bool {
-	t := reflect.ValueOf(i)
-	if t.Kind() == reflect.Ptr {
-		return IsKind(t.Elem().Interface(), k)
-	}
-	return t.Kind() == k
-}
-
-// Sets the given receiver with the given value.
-// Assigns the value or a pointer to it, depending on the reciever type
-func SetValue(r interface{}, val string) error {
-	iVal, err := ValueFromString(val, reflect.TypeOf(r))
-	if err != nil {
-		return err
-	}
-
-	recv := reflect.ValueOf(r)
-	if recv.Type().Kind() == reflect.Ptr {
-		recv = recv.Elem()
-	}
-
-	v := reflect.ValueOf(iVal)
-	if v.Type().Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	recv.Set(v)
-	return nil
 }

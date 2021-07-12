@@ -15,8 +15,7 @@
 package functions
 
 import (
-	"commandgo/valuetyping"
-	"fmt"
+	"commandgo/values"
 	"reflect"
 	"runtime"
 	"strings"
@@ -25,7 +24,7 @@ import (
 // Checks if given interface is a func.
 // will be true for both global functions and methods.
 func IsFunc(i interface{}) bool {
-	return valuetyping.IsKind(i, reflect.Func)
+	return values.IsKind(i, reflect.Func)
 }
 
 // Checks if the given interface is a method.
@@ -56,14 +55,7 @@ func IsMethod(i interface{}) bool {
 // function is called as a global function, assuming all parameters are inputs.
 // If called with a method, will assume the receiver structure is a parameter.
 func CallFunc(i interface{}, args ...string) ([]interface{}, error) {
-	if !IsFunc(i) {
-		return nil, fmt.Errorf("Not a function")
-	}
-	// parse args into parameters
-	sig, err := NewSignature(i)
-	if err != nil {
-		return nil, err
-	}
+	sig := NewSignature(i)
 	inVals, err := ParseParameters(sig, args)
 	if err != nil {
 		return nil, err
@@ -72,7 +64,7 @@ func CallFunc(i interface{}, args ...string) ([]interface{}, error) {
 
 	// check if an error returned
 	errInterface := reflect.TypeOf((*error)(nil)).Elem()
-	var values []interface{}
+	var vals []interface{}
 	err = nil
 	for _, ov := range outVals {
 		if ov.Kind() == reflect.Interface && ov.Type().Implements(errInterface) {
@@ -81,9 +73,9 @@ func CallFunc(i interface{}, args ...string) ([]interface{}, error) {
 			}
 			continue
 		}
-		values = append(values, ov.Interface())
+		vals = append(vals, ov.Interface())
 	}
-	return values, err
+	return vals, err
 }
 
 // Get the function name if the given interface is a func.
