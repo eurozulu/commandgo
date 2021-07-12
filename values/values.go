@@ -19,7 +19,10 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -28,6 +31,19 @@ import (
 
 var SliceDelimiter = ","
 var TimeFormat = time.RFC3339
+
+type ParseArg func(s string) (interface{}, error)
+
+func NewCustomType(i interface{}, pfunc ParseArg) error {
+	t := reflect.TypeOf(i)
+	if _, ok := customValues[t]; ok {
+		return fmt.Errorf("type %s is already in use", t.String())
+	}
+	customValues[t] = pfunc
+	return nil
+}
+
+var customValues = map[reflect.Type]ParseArg{}
 
 // ValueFromString attempts to parse the given string, into the given type.
 // If the string is parsable and the type is supported, the resulting value is returned as an interface.
@@ -75,7 +91,11 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 		return stringFromString(v, t)
 
 	default:
-		return nil, fmt.Errorf("%s types are not supported as command line arguments", t.String())
+		ct, ok := customValues[t]
+		if !ok {
+			return nil, fmt.Errorf("%s types are not supported as command line arguments", t.String())
+		}
+		return ct(v)
 	}
 }
 
@@ -250,4 +270,23 @@ func stringFromString(s string, t reflect.Type) (interface{}, error) {
 	sv := reflect.New(t)
 	sv.Elem().SetString(s)
 	return sv.Elem().Interface(), nil
+}
+
+func init() {
+	if err := NewCustomType(io.ReadCloser(nil), parseIOReader); err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func parseIOReader(s string) (interface{}, error) {
+	if s == "-" {
+		return os.Stdin, nil
+	}
+
+	f, err := os.Open(s)
+	if err == nil {
+		return f, nil
+	}
+
+	return nil, err
 }
