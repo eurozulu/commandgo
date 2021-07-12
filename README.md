@@ -2,10 +2,10 @@
 
 ### Command line parser / object mapper
 
--- Simplifies writing command line tools by mapping command line arguments directly into functions and method.  
--- Keeps all flags and commands in one place.
--- Maps command line either  into your own "command" structures or directly into your application model.
--- Performs automatic type detection and parsing for all variables, field and parameters with extendable framework for customised data type.  
+* Simplifies writing command line tools by mapping command line arguments directly into functions and method.  
+* Keeps all flags and commands in one place.
+* Maps command line either  into your own "command" structures or directly into your application model.
+* Performs automatic type detection and parsing for all variables, field and parameters with extendable framework for customised data type.  
 (Supports optional, varidac parameters for any of the supported data types.)  
   
 
