@@ -5,6 +5,7 @@ import (
 	"commandgo/functions"
 	"commandgo/help"
 	"commandgo/values"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +13,9 @@ import (
 	"strconv"
 	"strings"
 )
+
+var ErrorNoCommandFound = errors.New("no command found")
+var ErrorCommandNotKnown = errors.New("command not known")
 
 // Commands is the main command mapping, mapping command line arguments to variables and functions
 // keys must have values of either:
@@ -64,18 +68,36 @@ func (c Commands) Run(args ...string) ([]interface{}, error) {
 	if !ok {
 		// not known, check if default key available
 		k, ok = c.findKey("")
+	} else {
+		if ca != "" {
+			if err := cargs.Remove(&arguments.Argument{Name: ca}); err != nil {
+				return nil, err
+			}
+		}
 	}
+
 	if help.HelpRequested {
 		return help.ShowHelp(k, args...), nil
 	}
 	if !ok {
 		if ca != "" {
-			return nil, fmt.Errorf("%s is an unknown command", ca)
+			return nil, ErrorCommandNotKnown
 		}
-		return nil, fmt.Errorf("no command found")
+		return nil, ErrorNoCommandFound
 	}
 
 	cmd := c[k]
+	// ensure all flags have been consumed if not jumping into a submap
+	if !c.isSubmap(cmd) {
+		f := cargs.Flags()
+		if len(f) > 0 {
+			names := make([]string, len(f))
+			for i, fn := range f {
+				names[i] = fn.Name
+			}
+			return nil, fmt.Errorf("unexpected flag found, %s", strings.Join(names, ","))
+		}
+	}
 	ag := c.trimParameters(cmd, cargs.CommandLine())
 	v, err = c.invokeCommand(cmd, ag)
 	if err != nil {

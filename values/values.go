@@ -100,9 +100,9 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 }
 
 func IsKind(i interface{}, k reflect.Kind) bool {
-	t := reflect.ValueOf(i)
+	t := reflect.TypeOf(i)
 	if t.Kind() == reflect.Ptr {
-		return IsKind(t.Elem().Interface(), k)
+		t = t.Elem()
 	}
 	return t.Kind() == k
 }
@@ -224,9 +224,7 @@ func floatFromString(s string, t reflect.Type) (interface{}, error) {
 		}
 		f = fl
 	}
-	iv := reflect.New(t)
-	iv.Elem().SetFloat(f)
-	return iv.Interface(), nil
+	return f, nil
 }
 
 func intFromString(s string, t reflect.Type) (interface{}, error) {

@@ -28,7 +28,6 @@ type Arguments interface {
 
 type Argument struct {
 	Name       string
-	Position   int
 	Parameters []string
 }
 
@@ -80,11 +79,14 @@ func (a arguments) Argument(name string) *Argument {
 }
 
 func (a *arguments) Remove(arg *Argument) error {
-	i := arg.Position + 1 + len(arg.Parameters)
-	if arg.Position > len(a.cmdline) || i > len(a.cmdline) {
-		return fmt.Errorf("invaid arg position %d.  Command line is %d long", arg.Position, len(a.cmdline))
+	i := a.Position(arg)
+	if i < 0 {
+		return fmt.Errorf("unknown argument %s", arg.Name)
 	}
-	a.cmdline = append(a.cmdline[:arg.Position], a.cmdline[i:]...)
+	if i+len(arg.Parameters) >= len(a.cmdline) {
+		return fmt.Errorf("invaid arg %s. parameters not found in command line", arg.Name)
+	}
+	a.cmdline = append(a.cmdline[:i], a.cmdline[i+len(arg.Parameters)+1:]...)
 	return nil
 }
 
@@ -105,9 +107,17 @@ func (a arguments) parameters(position int) []string {
 func (a arguments) newArg(name string, position int) *Argument {
 	return &Argument{
 		Name:       name,
-		Position:   position,
 		Parameters: a.parameters(position),
 	}
+}
+
+func (a *arguments) Position(arg *Argument) int {
+	for i, a := range a.cmdline {
+		if a == arg.Name {
+			return i
+		}
+	}
+	return -1
 }
 
 func NewArguments(args []string) Arguments {
