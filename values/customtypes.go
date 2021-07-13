@@ -1,11 +1,10 @@
-// CustomTypes allow the type assertion to be expanded to support any type required.
-// The custom typeing maps a Type to a specific value parsing function.
-// The type defines which parameter types or variable can be used as mapping points, to receive a string argument.
+// CustomTypes allow the value type support to be expanded to support any type required.
+// By adding custom types, these types can then be mapped to in variables and field or contained in function parameters.
 // Any parameter which the type is assignable to can be specified as a mapped point (variable or function parameter)
 // e.g. By specifying the *os.File as a type, a function with a signature:  myfunc(in io.ReadCloser) error
-// can be mapped, and will recieve the new *File instance when called.
-// The Type is mapped to a ArgValue function `func(s string) (interface{}, error)`
-// This receives the argument from the command line and should 'parse' it into the required type.
+// can be mapped, and will receive the new *File instance when called, having used the argument as a file path.
+// The Type is mapped to a ArgValue function `func(s string, t reflect.Type) (interface{}, error)`
+// This receives the argument from the command line and the type to return.
 // e.g. for the *File example, (Which is built in already) the argument is treated as the file path and
 // a call to os.Open is made, returning the resulting file.
 
@@ -19,7 +18,7 @@ import (
 	"time"
 )
 
-// ArgValue parses the single string argument into a specific type.
+// ArgValue parses the single string argument into the given type.
 type ArgValue func(s string, t reflect.Type) (interface{}, error)
 
 // Timeformat for which time types are parsed
@@ -61,10 +60,11 @@ func customType(t reflect.Type) ArgValue {
 	return nil
 }
 
-// init registers the "out of the box" custom types supported
+// init registers the "out of the box" custom types
 func init() {
 	NewCustomType(reflect.TypeOf(&os.File{}), customTypeFile)
 	NewCustomType(reflect.TypeOf(&url.URL{}), customTypeURL)
+	NewCustomType(reflect.TypeOf(&time.Time{}), customTypeTime)
 	NewCustomType(reflect.TypeOf(time.Time{}), customTypeTime)
 }
 
@@ -87,6 +87,9 @@ func customTypeTime(s string, t reflect.Type) (interface{}, error) {
 	u, err := time.Parse(TimeFormat, s)
 	if err != nil {
 		return nil, err
+	}
+	if t.Kind() == reflect.Ptr {
+		return &u, nil
 	}
 	return u, nil
 }
