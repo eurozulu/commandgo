@@ -2,10 +2,10 @@
 
 ### Command line parser / object mapper
 
--- Simplifies writing command line tools by mapping command line arguments directly into functions and method.  
--- Keeps all flags and commands in one place.
--- Maps command line either  into your own "command" structures or directly into your application model.
--- Performs automatic type detection and parsing for all variables, field and parameters with extendable framework for customised data type.  
+* Simplifies writing command line tools by mapping command line arguments directly into functions and method.  
+* Keeps all flags and commands in one place.
+* Maps command line either  into your own "command" structures or directly into your application model.
+* Performs automatic type detection and parsing for all variables, field and parameters with extendable framework for customised data type.  
 (Supports optional, varidac parameters for any of the supported data types.)  
   
 
@@ -86,7 +86,7 @@ Once a map is created, it can be called using the arguments to be parsed.
 Commands has two points to call, `Run(args ...string)` and a convienience method `runArgs()` which simply uses the os.Args.  
 
 
-#@## Execution order
+#### Execution order
 On calling `Run` or `RunArgs` the command line is parsed in the following order:  
 - The Flags are located along with their following values.  
 - Flags are each run, first the assignment mappings, followed by any func mappings.  
@@ -149,10 +149,25 @@ True when they are present, unless they are followed by a 'false' value.
 
 certain structs are supported:
 
-+ Those implementing the [json.UnmarshalJSON](https://golang.org/pkg/encoding/json/#example__customMarshalJSON)
-  interface
-+ Those supporting [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) interface
-+ Date, Duration and url.URL
++ Those supporting [encoding.BinaryUnmarshaler](https://golang.org/pkg/encoding/#BinaryUnmarshaler) interface
++ Those supporting [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) interface  
+
+### Custom Data type  
+Data types support can be extended using custom data types.  These types define a specific data type and provide a custom function to parse the string argument into that type.  
+The framework include three custom types out of the box:  
++ *url.Url
++ Time, Duration
++ *os.File  
+  
+Custom types apply to both fields/variable values and func/method parameters.  
+By specifying a custom type, function parameters and variables of any type can be mapped directly from the command line and parsed in the required type.  
+  
+CustomTypes uses the `NewCustomType` method, which accepts a reflect.Type and a ArgValue function.
+
+
+  
+  
+
   
 Flags may be mapped to global variables using a pointer to that variable and assigning one or more flag names to it:  
 `commandgo.AddFlag(&Verbose, "verbose","v")`
@@ -197,12 +212,18 @@ Check the fields description for the data types supported as parameters.
 
 #### Variadic Parameters
 Variadic parameters are supported.  When present, the command line arguments 
-from the final position, onwards, are all parsed into a slice of the Variadic type.
+from the final position, onwards, are all parsed into a slice of the Variadic type.  
+These allow the command line to accept zero or more arguments optionaly.  
+A func with a signature such as:  
+```
+func DoThis(s ...string) {}
+```
+Can accept any command line passed to it as all args are strings already, any all are optional.  
 
 
 ### Help System
 All command line parsers require a help system to guide the final user about the commands and flags.  
-The help system is current designed to be open and fereely editable by the user.
+The help system is current designed to be open and freely editable by the application designer.
 Custom help can be added or replace any existing help.  
 
 In line with minimal effort, the help system aims to use Godoc comments to form the help system.  

@@ -53,7 +53,7 @@ func ParseParameters(sig *Signature, args []string) ([]reflect.Value, error) {
 	}
 	if !sig.IsVariadic && len(vals) < len(args) {
 		pc := len(sig.ParamTypes)
-		return nil, fmt.Errorf("too many arguments.  %d expected, found %s", pc, strings.Join(args, " "))
+		return nil, fmt.Errorf("unexpected arguments. expected %d, found %d '%s'", pc, len(args), strings.Join(args, " "))
 	}
 	return vals, nil
 }
