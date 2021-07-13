@@ -53,7 +53,10 @@ func (c Commands) Run(args ...string) ([]interface{}, error) {
 
 	// collect any flags from cmdline that are mapped in this map (removes them from args)
 	cargs := arguments.NewArguments(args)
-	flags := c.matchFlags(cargs)
+	flags, err := c.matchFlags(cargs)
+	if err != nil {
+		return nil, err
+	}
 
 	// Invoke all the flags before invoking the command
 	v, err := c.invokeFlags(flags)
@@ -98,8 +101,7 @@ func (c Commands) Run(args ...string) ([]interface{}, error) {
 			return nil, fmt.Errorf("unexpected flag found, %s", strings.Join(names, ","))
 		}
 	}
-	ag := c.trimParameters(cmd, cargs.CommandLine())
-	v, err = c.invokeCommand(cmd, ag)
+	v, err = c.invokeCommand(cmd, cargs.CommandLine())
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +167,7 @@ func (c Commands) invokeFlags(flags flagMap) ([]interface{}, error) {
 // matches any flags found in the given arguments, with mapped flags in this Commands.
 // Any matched arguments are removed from the given args and copied to the resulting map.
 // returns a map keyed with the 'real' (not the command line arg) keys of this commands, mapping to the matching Argument
-func (c Commands) matchFlags(args arguments.Arguments) flagMap {
+func (c Commands) matchFlags(args arguments.Arguments) (flagMap, error) {
 	m := flagMap{}
 	flags := args.Flags()
 	for _, arg := range flags {
@@ -173,13 +175,17 @@ func (c Commands) matchFlags(args arguments.Arguments) flagMap {
 		if !ok {
 			continue
 		}
-		arg.Parameters = c.trimParameters(c[k], arg.Parameters)
+		var err error
+		arg.Parameters, err = c.trimParameters(c[k], arg.Parameters)
+		if err != nil {
+			return nil, err
+		}
 		m[k] = arg
 		if err := args.Remove(arg); err != nil {
 			log.Fatalln(err)
 		}
 	}
-	return m
+	return m, nil
 }
 
 // findKey finds a key from an argumenet in a case insensitive search
@@ -192,34 +198,30 @@ func (c Commands) findKey(arg string) (string, bool) {
 	return "", false
 }
 
-// trimParameters sets the number of parameters on the given slice to suit the intended target.
-// If cmd is an assignment (pointer to a variable/field) parameters are trimmed to a single one. (or none)
-// if cmd is a func, the func signature is checked and slice length is matched to the number of parameters.
-// Note functions using variadic parameters and sub commands are NOT trimmed.
-func (c Commands) trimParameters(cmd interface{}, parameters []string) []string {
-	if c.isAssignment(cmd) {
-		if len(parameters) > 1 {
-			parameters = parameters[0:1]
-		}
-		// Special case for bools, which have optional parameters
-		if values.IsKind(cmd, reflect.Bool) {
-			// see if following parameter is, in fact a bool otherwise don't use it.
-			if len(parameters) > 0 {
-				if _, err := strconv.ParseBool(parameters[0]); err != nil {
-					parameters = parameters[:0]
-				}
-			}
-		}
-		return parameters
+func (c Commands) trimParameters(cmd interface{}, parameters []string) ([]string, error) {
+	if !c.isAssignment(cmd) {
+		return parameters, nil
 	}
 
-	if functions.IsFunc(cmd) {
-		sig := functions.NewSignature(cmd)
-		if !sig.IsVariadic && len(parameters) > len(sig.ParamTypes) {
-			parameters = parameters[0:len(sig.ParamTypes)]
+	if len(parameters) > 1 {
+		parameters = parameters[0:1]
+	}
+
+	// Special case for bools, which have optional parameter
+	if values.IsKind(cmd, reflect.Bool) {
+		// see if following parameter is, in fact a bool otherwise don't use it.
+		if len(parameters) > 0 {
+			if _, err := strconv.ParseBool(parameters[0]); err != nil {
+				parameters = parameters[:0]
+			}
+		}
+	} else {
+		if len(parameters) != 1 {
+			return nil, fmt.Errorf("no parameter value found for flag")
 		}
 	}
-	return parameters
+	return parameters, nil
+
 }
 
 func (c Commands) isAssignment(cmd interface{}) bool {

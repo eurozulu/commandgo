@@ -19,7 +19,6 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"os"
@@ -29,21 +28,16 @@ import (
 	"time"
 )
 
+// SliceDelimiter determines how argument lists (contained within a single argument) are split.
 var SliceDelimiter = ","
+
+// Timeformat for which time types are parsed
 var TimeFormat = time.RFC3339
 
+// ParseArg parses the single string argument into a specific type.
 type ParseArg func(s string) (interface{}, error)
 
-func NewCustomType(i interface{}, pfunc ParseArg) error {
-	t := reflect.TypeOf(i)
-	if _, ok := customValues[t]; ok {
-		return fmt.Errorf("type %s is already in use", t.String())
-	}
-	customValues[t] = pfunc
-	return nil
-}
-
-var customValues = map[reflect.Type]ParseArg{}
+var customTypes = map[reflect.Type]ParseArg{}
 
 // ValueFromString attempts to parse the given string, into the given type.
 // If the string is parsable and the type is supported, the resulting value is returned as an interface.
@@ -56,9 +50,16 @@ var customValues = map[reflect.Type]ParseArg{}
 // Base types float, int, bool string are supported.
 // Maps are parsed as json structures. e.g. -mapflag '{"mykey": "myvalue", "isIt": true}'
 func ValueFromString(v string, t reflect.Type) (interface{}, error) {
+
+	// Check custom types first
+	cp := customType(t)
+	if cp != nil {
+		return cp(v)
+	}
+
 	switch t.Kind() {
-	case reflect.Interface:
-		return ValueFromString(v, t.Elem())
+	//case reflect.Interface:
+	//	return ValueFromString(v, t.Elem())
 
 	case reflect.Ptr:
 		v, err := ValueFromString(v, t.Elem())
@@ -91,11 +92,7 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 		return stringFromString(v, t)
 
 	default:
-		ct, ok := customValues[t]
-		if !ok {
-			return nil, fmt.Errorf("%s types are not supported as command line arguments", t.String())
-		}
-		return ct(v)
+		return nil, fmt.Errorf("%s types are not supported as command line arguments", t.String())
 	}
 }
 
@@ -136,30 +133,16 @@ func SetValue(r interface{}, val string) error {
 	return nil
 }
 
+var jsonUnmarshalerInterface = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+var textUnmarshalerInterface = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+
 func structureFromString(s string, t reflect.Type) (interface{}, error) {
 	pStr := reflect.New(t)
 	if s == "" {
 		return pStr.Elem().Interface(), nil
 	}
-
-	if t == reflect.TypeOf(url.URL{}) {
-		u, err := url.Parse(s)
-		if err != nil {
-			return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
-		}
-		return *u, nil
-	}
-
-	if t == reflect.TypeOf(time.Time{}) {
-		u, err := time.Parse(TimeFormat, s)
-		if err != nil {
-			return nil, fmt.Errorf("%s could not be read as a %s  %v", s, t.String(), err)
-		}
-		return u, nil
-	}
-
 	// If supports json, treat argument as json string
-	if t.Implements(reflect.TypeOf((json.Unmarshaler)(nil))) {
+	if t.Implements(jsonUnmarshalerInterface) {
 		err := json.Unmarshal([]byte(s), pStr.Interface())
 		if err != nil {
 			return nil, err
@@ -168,7 +151,7 @@ func structureFromString(s string, t reflect.Type) (interface{}, error) {
 	}
 
 	// If supports textUnmarshal, unmarshal argument into new object
-	if t.Implements(reflect.TypeOf((*encoding.TextUnmarshaler)(nil))) {
+	if t.Implements(textUnmarshalerInterface) {
 		tu, ok := pStr.Interface().(encoding.TextUnmarshaler)
 		if !ok {
 			panic("Supposed supported interface didn't cast into that interface")
@@ -180,8 +163,8 @@ func structureFromString(s string, t reflect.Type) (interface{}, error) {
 		return pStr.Interface(), nil
 	}
 
-	return nil, fmt.Errorf("failed to unmarshal argument %s into paramter %s as that parameter does not support a supported unmarshalling interface."+
-		"Must support, json.Unmarshaler or encoding.TextUnmarshaler", s, t)
+	return nil, fmt.Errorf("failed to read argument %s as parameter %s as that parameter does not support "+
+		"the json.Unmarshaler or encoding.TextUnmarshaler interfaces", s, t)
 }
 
 func sliceFromString(s string, t reflect.Type) (interface{}, error) {
@@ -270,21 +253,59 @@ func stringFromString(s string, t reflect.Type) (interface{}, error) {
 	return sv.Elem().Interface(), nil
 }
 
+// NewCustomType adds the given type as a new, valid parameter type, which can be parsed from string by the given ParseArg function.
+func NewCustomType(t reflect.Type, pfunc ParseArg) error {
+	if customType(t) != nil {
+		return fmt.Errorf("type %s is already in use", t.String())
+	}
+	customTypes[t] = pfunc
+	return nil
+}
+
+func IsCustomType(t reflect.Type) bool {
+	return customType(t) != nil
+}
+
+func customType(t reflect.Type) ParseArg {
+	for k, v := range customTypes {
+		if k.AssignableTo(t) {
+			return v
+		}
+	}
+	return nil
+}
+
 func init() {
-	if err := NewCustomType(io.ReadCloser(nil), parseIOReader); err != nil {
+	if err := NewCustomType(reflect.TypeOf(&os.File{}), customTypeFile); err != nil {
+		log.Fatalln(err)
+	}
+	if err := NewCustomType(reflect.TypeOf(&url.URL{}), customTypeURL); err != nil {
+		log.Fatalln(err)
+	}
+	if err := NewCustomType(reflect.TypeOf(time.Time{}), customTypeTime); err != nil {
 		log.Fatalln(err)
 	}
 }
 
-func parseIOReader(s string) (interface{}, error) {
+func customTypeFile(s string) (interface{}, error) {
 	if s == "-" {
 		return os.Stdin, nil
 	}
+	return os.Open(s)
+}
 
-	f, err := os.Open(s)
-	if err == nil {
-		return f, nil
+func customTypeURL(s string) (interface{}, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, fmt.Errorf("%s could not be read as a url  %v", s, err)
 	}
+	return u, nil
+}
 
-	return nil, err
+func customTypeTime(s string) (interface{}, error) {
+	u, err := time.Parse(TimeFormat, s)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
 }
