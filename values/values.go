@@ -19,9 +19,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/url"
-	"os"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -31,43 +29,35 @@ import (
 // SliceDelimiter determines how argument lists (contained within a single argument) are split.
 var SliceDelimiter = ","
 
-// Timeformat for which time types are parsed
-var TimeFormat = time.RFC3339
-
-// ParseArg parses the single string argument into a specific type.
-type ParseArg func(s string) (interface{}, error)
-
-var customTypes = map[reflect.Type]ParseArg{}
+var textUnmarshalerInterface = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+var binaryUnmarshalerInterface = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
 
 // ValueFromString attempts to parse the given string, into the given type.
 // If the string is parsable and the type is supported, the resulting value is returned as an interface.
 // Most types are supported with the exception of channels, functions.
-// struct's must support either the json.Unmarshaler or encoding.TextUnmarshaler interfaces.
-// Special cases for structs: URL and Time both supported
+// All the Base types float32/64, int8,16,...64, bool string are supported.
+// strings can be parsed into more complext structures:
+// struct's may support either the encoding.TextUnmarshaler or encoding.BinaryUnmarshaler interfaces, otherwise attempts to parge argument as json
 // The argument string is passed to these to unmarshal into the struct.
 // slices/arrays are parsed as comma delimited items. Change the SliceDelimiter for something else.
 // All supported types can be used as item types of the array.
-// Base types float, int, bool string are supported.
 // Maps are parsed as json structures. e.g. -mapflag '{"mykey": "myvalue", "isIt": true}'
+// see CustomType to add additional types as valid parameter types.
 func ValueFromString(v string, t reflect.Type) (interface{}, error) {
-
 	// Check custom types first
-	cp := customType(t)
-	if cp != nil {
-		return cp(v)
+	if IsCustomType(t) {
+		return CustomValueFromString(v, t)
 	}
 
 	switch t.Kind() {
-	//case reflect.Interface:
-	//	return ValueFromString(v, t.Elem())
-
 	case reflect.Ptr:
-		v, err := ValueFromString(v, t.Elem())
+		// If type is a ptr, get value of element and wrap it in a new pointer
+		vp, err := ValueFromString(v, t.Elem())
 		if err != nil {
 			return nil, err
 		}
 		p := reflect.New(t.Elem())
-		p.Elem().Set(reflect.ValueOf(v))
+		p.Elem().Set(reflect.ValueOf(vp))
 		return p.Interface(), nil
 
 	case reflect.Struct:
@@ -85,6 +75,9 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
 		return intFromString(v, t)
 
+	case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
+		return uintFromString(v, t)
+
 	case reflect.Bool:
 		return boolFromString(v, t)
 
@@ -97,6 +90,9 @@ func ValueFromString(v string, t reflect.Type) (interface{}, error) {
 }
 
 func IsKind(i interface{}, k reflect.Kind) bool {
+	if i == nil {
+		return false
+	}
 	t := reflect.TypeOf(i)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -133,23 +129,11 @@ func SetValue(r interface{}, val string) error {
 	return nil
 }
 
-var jsonUnmarshalerInterface = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
-var textUnmarshalerInterface = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-
 func structureFromString(s string, t reflect.Type) (interface{}, error) {
 	pStr := reflect.New(t)
 	if s == "" {
 		return pStr.Elem().Interface(), nil
 	}
-	// If supports json, treat argument as json string
-	if t.Implements(jsonUnmarshalerInterface) {
-		err := json.Unmarshal([]byte(s), pStr.Interface())
-		if err != nil {
-			return nil, err
-		}
-		return pStr.Interface(), nil
-	}
-
 	// If supports textUnmarshal, unmarshal argument into new object
 	if t.Implements(textUnmarshalerInterface) {
 		tu, ok := pStr.Interface().(encoding.TextUnmarshaler)
@@ -163,15 +147,31 @@ func structureFromString(s string, t reflect.Type) (interface{}, error) {
 		return pStr.Interface(), nil
 	}
 
-	return nil, fmt.Errorf("failed to read argument %s as parameter %s as that parameter does not support "+
-		"the json.Unmarshaler or encoding.TextUnmarshaler interfaces", s, t)
+	// If supports BinaryUnmarshaler, unmarshal argument into new object
+	if t.Implements(binaryUnmarshalerInterface) {
+		tu, ok := pStr.Interface().(encoding.BinaryUnmarshaler)
+		if !ok {
+			panic("Supposed supported interface didn't cast into that interface")
+		}
+		err := tu.UnmarshalBinary([]byte(s))
+		if err != nil {
+			return nil, err
+		}
+		return pStr.Interface(), nil
+	}
+	// try to parse as json
+	err := json.Unmarshal([]byte(s), pStr.Interface())
+	if err != nil {
+		return nil, err
+	}
+	return pStr.Elem().Interface(), nil
 }
 
 func sliceFromString(s string, t reflect.Type) (interface{}, error) {
 	ss := strings.Split(s, SliceDelimiter)
 	sv := reflect.MakeSlice(t, 0, len(ss))
 	for _, sa := range ss {
-		sel, err := ValueFromString(sa, t.Elem())
+		sel, err := ValueFromString(strings.TrimSpace(sa), t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("%s could not be read as a %s", sa, t.Elem().String())
 		}
@@ -195,23 +195,27 @@ func mapFromString(s string, t reflect.Type) (interface{}, error) {
 	} else {
 		mp.Elem().Set(reflect.MakeMap(t))
 	}
-	return mp.Interface(), nil
+	return mp.Elem().Interface(), nil
 }
 
 func floatFromString(s string, t reflect.Type) (interface{}, error) {
-	var f float64
+	v := reflect.New(t)
 	if s != "" {
 		fl, err := strconv.ParseFloat(s, 64)
 		if err != nil {
 			return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
 		}
-		f = fl
+		if t.Kind() == reflect.Float32 && fl > math.MaxFloat32 {
+			return nil, fmt.Errorf("argument %s could not be parsed as a %s", s, t.Name())
+		}
+		v.Elem().SetFloat(fl)
 	}
-	return f, nil
+	return v.Elem().Interface(), nil
 }
 
 func intFromString(s string, t reflect.Type) (interface{}, error) {
-	// Special cases
+	// Special case for time.Duration
+	// TODO: Can this be a custom type?
 	if t == reflect.TypeOf(time.Duration(0)) {
 		var d time.Duration
 		if s != "" {
@@ -224,19 +228,40 @@ func intFromString(s string, t reflect.Type) (interface{}, error) {
 		return &d, nil
 	}
 
-	var i int
+	v := reflect.New(t)
 	if s != "" {
 		ii, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
 		}
-		i = int(ii)
+		v.Elem().SetInt(ii)
+		// Ensure values match, in case of overflow.
+		if v.Elem().Int() != ii {
+			return nil, fmt.Errorf("argument %s could not be parsed as a %s", s, t.Name())
+		}
+
 	}
-	return i, nil
+	return v.Elem().Interface(), nil
+}
+
+func uintFromString(s string, t reflect.Type) (interface{}, error) {
+	v := reflect.New(t)
+	if s != "" {
+		ii, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not be read as a %s", s, t.String())
+		}
+		v.Elem().SetUint(ii)
+		// Ensure values match, in case of overflow.
+		if v.Elem().Uint() != ii {
+			return nil, fmt.Errorf("argument %s could not be parsed as a %s", s, t.Name())
+		}
+	}
+	return v.Elem().Interface(), nil
 }
 
 func boolFromString(s string, t reflect.Type) (interface{}, error) {
-	b := true // Special case for bools, default to true, when present.
+	b := true // Special case for bools, default to true
 	if s != "" {
 		bb, err := strconv.ParseBool(s)
 		if err != nil {
@@ -248,64 +273,8 @@ func boolFromString(s string, t reflect.Type) (interface{}, error) {
 }
 
 func stringFromString(s string, t reflect.Type) (interface{}, error) {
+	// remember its a string Kind but maybe not a string Type so we still create a new instance of the type and set the arg string
 	sv := reflect.New(t)
 	sv.Elem().SetString(s)
 	return sv.Elem().Interface(), nil
-}
-
-// NewCustomType adds the given type as a new, valid parameter type, which can be parsed from string by the given ParseArg function.
-func NewCustomType(t reflect.Type, pfunc ParseArg) error {
-	if customType(t) != nil {
-		return fmt.Errorf("type %s is already in use", t.String())
-	}
-	customTypes[t] = pfunc
-	return nil
-}
-
-func IsCustomType(t reflect.Type) bool {
-	return customType(t) != nil
-}
-
-func customType(t reflect.Type) ParseArg {
-	for k, v := range customTypes {
-		if k.AssignableTo(t) {
-			return v
-		}
-	}
-	return nil
-}
-
-func init() {
-	if err := NewCustomType(reflect.TypeOf(&os.File{}), customTypeFile); err != nil {
-		log.Fatalln(err)
-	}
-	if err := NewCustomType(reflect.TypeOf(&url.URL{}), customTypeURL); err != nil {
-		log.Fatalln(err)
-	}
-	if err := NewCustomType(reflect.TypeOf(time.Time{}), customTypeTime); err != nil {
-		log.Fatalln(err)
-	}
-}
-
-func customTypeFile(s string) (interface{}, error) {
-	if s == "-" {
-		return os.Stdin, nil
-	}
-	return os.Open(s)
-}
-
-func customTypeURL(s string) (interface{}, error) {
-	u, err := url.Parse(s)
-	if err != nil {
-		return nil, fmt.Errorf("%s could not be read as a url  %v", s, err)
-	}
-	return u, nil
-}
-
-func customTypeTime(s string) (interface{}, error) {
-	u, err := time.Parse(TimeFormat, s)
-	if err != nil {
-		return nil, err
-	}
-	return u, nil
 }
