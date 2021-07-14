@@ -32,41 +32,40 @@ mapping its fields and methods to command line commands.
 e.g.  
 ```
 Commmands{
-  "-flag1" : &Flag1,
-  "-flag2" : &myapp.Name,
-  "about" : showAbout,
-  "get" : Commands {
-      "" :&getter.DoGet,
-      "later" :&getter.DelayedGet,
+  "-verbose": &Verbose,
+  "-log":     &logs.Level,
+  "about":    showAbout,
+  "get": Commands {
+      "":        getter.DoGet,
+      "later":   getter.DelayedGet,
       "-format": &getter.OutputFormat,
   },
   "put" : Commands {
-      "" :&putter.DoPut
+      "" :       putter.DoPut
       "encrypt" :&putter.Encrypt,
-      "-key": &putter.key,
-      "-user": &putter.user,
+      "-key":    &putter.key,
+      "-user":   &putter.user,
       "new" : Commands{ 
-          "" : &builder.New,
+          "":      builder.New,
           "-name": &builder.Name, 
-          "-id": &builder.Id, 
+          "-id":   &builder.Id, 
           "-status": &builder.Status,
   },
 }
 ```  
   
-In this example there are four mappings in the 'root' map, two flags and two commands.  
-The flag mappings, ` -flag1` and `flag2` are called global flags, as they are always available, 
+In this example there are five mappings in the 'root' map, two flags (-verbose, -log) and three commands, "get", "put" & "about".  
+The top level flag mappings are called global flags, as they are always available to all commands.  These usually map to global variable.   
 Regardless of the command being used, these flags will be parsed from the command line first.  
-This leaves the two commands `get` and `put`.  These both map to their own sub maps, both having a unique set of flags.  
-get uses the default, "", mapping to map to the 'DoGet' method on the 'getter' object, post does something similar for the DoPut.  
+Of the three top level commands, two, `get` and `put` map into methods and `about` maps to a global function `showAbout()`.
+The method mappings are using submaps to define some additional flags that are specific to those commands only.
+In addition, put has a third level command `new` which maps into a Builder object for creating new instances.  
 
-When a command line reads appname get abc -format json  
-the 'get' command is mapped to the sub command, leaving abc -format.
-the get map maps the format flag to the getters 'Outputformat' field before calling the DoGet method with the signle param, abc.
+The maps are read from the root map down the hierarchy, so each sub command follows its parent command.  
+All flags in each map are parsed at each level and the final (deepest) map containing the last command is the one executed,
+after all the flags have been assigned.
 
-The getter can be any struct in your application, supporting those mapped fields and methods.
-for example:
-
+An example of what this map is mapping into:  
 ```
 type MyGetter struct {
   Outputformat string
@@ -80,6 +79,9 @@ func (mg MyGetter) DelayedGet(url *url.Url) (string, error) {
   ...
 }
 ```
+Note the parameters of these function are the types required (URL), which is parsed for you by the framework, from the given command line.  
+Command lines missing arguments or using malformed arguments for that type are reported as errors automatically by the framework.  
+
 
 ### Execution
 Once a map is created, it can be called using the arguments to be parsed.  
