@@ -60,7 +60,7 @@ Regardless of the command being used, these flags will be parsed from the comman
 Of the three top level commands, two, `get` and `put` map into methods and `about` maps to a global function `showAbout()`.
 The method mappings are using submaps to define some additional flags that are specific to those commands only.
 In addition, put has a third level command `new` which maps into a Builder object for creating new instances.  
-e.g.
+e.g.  
 ```mycmd put http://myserver/theputtedstuff "This is the data" -encrypt -user john -key ~/.ssh/id_rsa.pub```  
 or  
 ```mycmd put new -name mynewfile -id "blabla" -status draft```  
@@ -99,7 +99,52 @@ On calling `Run` or `RunArgs` the command line is parsed in the following order:
 The command line is parsed by passing it to each map and sub map, which 'consumes' arguments from it.  Consume meaning they are no longer
 made available to the following func or assignments.  Think of each mapping taking its arguments from the command line until all thats left
 is a command followed by its parameters.  Each flag takes what it needs and finally the command uses the remaining to set its parameters.
-  
+
+In the command line, Flags can appear in any order. All flags, with the exception of bool types must have a following
+argument as its value.  
+This value is converted to the relevant data type for the Field. Booleans MAY have a value, if it is parsable as a bool.
+If they have a following argument which is not parsable as bool, that value is ignored by the bool flag. Bool flag are
+True when they are present, unless they are followed by a 'false' value.
+
+
+
+#### Flags
+A Key may be marked as a 'Flag' by preceeding it with one or more '-' dash characters.  
+Flags are usually optional arguments which can alter the behaviour of the 'main' command.  
+Flag keys are treated with priority when executing the command line.  Non flags, which are not parameter values, are treated as
+a command, and executed once.  Flags are ALL executed before the main command is invoked.
+Any name can be mapped to any of these three mappings.
+
+#### Parameters
+
+All arguments which are not flags or values of flags are classed as unnamed arguments or parameters.  
+`... --myflag myflagvalue unnamed1 -v unnamed2 unnamed3`  
+In this example there are 3 unnamed values, (Assuming -v maps to a bool)
+
+Once all flags and their values are removed from the command line, the remaining, unnamed arguments are used to map to
+the parameters of the method being called, in the order they are presented.  
+e.g. should a method or function have a signature such as:  
+`func (ma Myargs) MyCommand(s string, t time.Time, count int)`  
+It will require three unnamed parameters in the command line and those parameters must be valid for the data types in
+that position.  
+`mycommand hello "1/1/2001T12:00:00" 4`  
+will parse correctly.  
+`mycommand "1/1/2001T12:00:00" hello 4`  
+will throw an error of invalid date.
+
+Check the fields description for the data types supported as parameters.
+
+#### Variadic Parameters
+Variadic parameters are supported.  When present, the command line arguments
+from the final position, onwards, are all parsed into a slice of the Variadic type.  
+These allow the command line to accept zero or more arguments optionaly.  
+A func with a signature such as:
+```
+func DoThis(s ...string) {}
+```
+Can accept any command line passed to it as all args are strings already, any all are optional.
+
+
 
 
 ### Mappings
@@ -128,39 +173,37 @@ No whitespace is allowed in keys.
 The map may contain a single empty key which is treated as the 'defualt' mapping for the map.  
 Default mapping is invoked when no command is found in the command line, after all the flags and their values have been removed.  
   
-
-#### Flags
-A Key may be marked as a 'Flag' by preceeding it with one or more '-' dash characters.  
-Flags are usually optional arguments which can alter the behaviour of the 'main' command.  
-Flag keys are treated with priority when executing the command line.  Non flags, which are not parameter values, are treated as
-a command, and executed once.  Flags are ALL executed before the main command is invoked.
-Any name can be mapped to any of these three mappings.
-
-# Data Types
+#### Data Types
 When parsing the command line argument strings, the destination of the argument is examinied to determine its type.  
 e.g. "-myflag": &SomeFloat  pointing to a float var attempts to parse the string following the -myflag agument, into a float.  
-This is the same process for function parameters.  Remaining arguments are converted into the type according to the order they appear
-and the function parameters signature.
+This is the same process for function parameters, struct fields and variables.
+When mappng to flags, the order of the command line is unimportant, flags can be anywhere in the command line.  
+When mapping to fucntions or methods, the order of the arguments and the count* must match that of the function parameters being called.
+*unless fecj/method uses varidatic parameters, in which case argument count must only match the non varidatic parameters. 
 
-Most data types are supported, all the base types, int64, float32/64, bool, string etc, as well as    
-Slices, Maps, URL, Time and some other structs.
-
-In the command line, Flags can appear in any order. All flags, with the exception of bool types must have a following
-argument as its value.  
-This value is converted to the relevant data type for the Field. Booleans MAY have a value, if it is parsable as a bool.
-If they have a following argument which is not parsable as bool, that value is ignored by the bool flag. Bool flag are
-True when they are present, unless they are followed by a 'false' value.
-
-certain structs are supported:
-
+Most data types are supported:  
++ int, int16, int32m int64, uint8, uint16, uint32, uint64
++ float32 float64 
++ >bool
++ string    
++ slices 
++ maps
++ >>struct
+  
+>bool types are exceptional as they are the only type not requiring a value.  They default to true when no value is provided.  
+>>structs are parsed as json from the command line or, if the struct supports encoding, will be Unmarshalled using that.
 + Those supporting [encoding.BinaryUnmarshaler](https://golang.org/pkg/encoding/#BinaryUnmarshaler) interface
-+ Those supporting [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) interface  
++ Those supporting [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) interface
+
+Additional types can be added via the 'CustomType' system.  Three custom types are provided for you:
+
 
 ### Custom Data type  
-Data types support can be extended using custom data types.  These types define a specific data type and provide a custom function to parse the string argument into that type.  
+Data type support can be extended using custom data types to allow mapping into variables or functions which use a specific type.  
+These types define a specific data type and provide a custom function to parse the string argument into that type.  
 The framework include three custom types out of the box:  
 + *url.Url
-+ Time, Duration
++ time.Time, time.Duration
 + *os.File  
   
 Custom types apply to both fields/variable values and func/method parameters.  
@@ -168,20 +211,6 @@ By specifying a custom type, function parameters and variables of any type can b
   
 CustomTypes uses the `NewCustomType` method, which accepts a reflect.Type and a ArgValue function.
 
-
-  
-  
-
-  
-Flags may be mapped to global variables using a pointer to that variable and assigning one or more flag names to it:  
-`commandgo.AddFlag(&Verbose, "verbose","v")`
-This assumes there is a global variable called Verbose:
-`var Verbose bool`  
-
-Being global, all command have access to these values.  
-Fields may also be mapped to struct fields.  For commands wishing to have flags specific to that command,
-and not global.  Such commands can map to a method in a generic struct, which makes all the fields in 
-that struct available as flags.
 
 #### Command alias
 
@@ -193,36 +222,6 @@ cmd := commandgo.Commands{
 }
 ```
 The Help system detects these multi entries and groups all keys into the same help subject.  
-
-
-#### Unnamed arguments / Parameters
-
-All arguments which are not flags or values of flags are classed as unnamed arguments or parameters.  
-`... --myflag myflagvalue unnamed1 -v unnamed2 unnamed3`  
-In this example there are 3 unnamed values, (Assuming -v maps to a bool)
-
-Once all flags and their values are removed from the command line, the remaining, unnamed arguments are used to map to
-the parameters of the method being called, in the order they are presented.  
-e.g. should a method or function have a signature such as:  
-`func (ma Myargs) MyCommand(s string, t time.Time, count int)`  
-It will require three unnamed parameters in the command line and those parameters must be valid for the data types in
-that position.  
-`mycommand hello "1/1/2001T12:00:00" 4`  
-will parse correctly.  
-`mycommand "1/1/2001T12:00:00" hello 4`  
-will throw an error of invalid date.
-
-Check the fields description for the data types supported as parameters.
-
-#### Variadic Parameters
-Variadic parameters are supported.  When present, the command line arguments 
-from the final position, onwards, are all parsed into a slice of the Variadic type.  
-These allow the command line to accept zero or more arguments optionaly.  
-A func with a signature such as:  
-```
-func DoThis(s ...string) {}
-```
-Can accept any command line passed to it as all args are strings already, any all are optional.  
 
 
 ### Help System
