@@ -60,10 +60,11 @@ Regardless of the command being used, these flags will be parsed from the comman
 Of the three top level commands, two, `get` and `put` map into methods and `about` maps to a global function `showAbout()`.
 The method mappings are using submaps to define some additional flags that are specific to those commands only.
 In addition, put has a third level command `new` which maps into a Builder object for creating new instances.  
+e.g.
+```mycmd put http://myserver/theputtedstuff "This is the data" -encrypt -user john -key ~/.ssh/id_rsa.pub```
+or
+```mycmd put new -name mynewfile -id "blabla" -status draft```
 
-The maps are read from the root map down the hierarchy, so each sub command follows its parent command.  
-All flags in each map are parsed at each level and the final (deepest) map containing the last command is the one executed,
-after all the flags have been assigned.
 
 An example of what this map is mapping into:  
 ```
