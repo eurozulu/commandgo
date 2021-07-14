@@ -61,9 +61,10 @@ Of the three top level commands, two, `get` and `put` map into methods and `abou
 The method mappings are using submaps to define some additional flags that are specific to those commands only.
 In addition, put has a third level command `new` which maps into a Builder object for creating new instances.  
 e.g.
-```mycmd put http://myserver/theputtedstuff "This is the data" -encrypt -user john -key ~/.ssh/id_rsa.pub```
-or
-```mycmd put new -name mynewfile -id "blabla" -status draft```
+```mycmd put http://myserver/theputtedstuff "This is the data" -encrypt -user john -key ~/.ssh/id_rsa.pub```  
+or  
+```mycmd put new -name mynewfile -id "blabla" -status draft```  
+  
 
 
 An example of what this map is mapping into:  
