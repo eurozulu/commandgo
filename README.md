@@ -1,76 +1,232 @@
 # CommandGo
+### Command line parser - object mapper
 
-### Command line parser / object mapper
-
-* Simplifies writing command line tools by mapping command line arguments directly into functions and method.  
-* Keeps all flags and commands in one place.
-* Maps command line either  into your own "command" structures or directly into your application model.
-* Performs automatic type detection and parsing for all variables, field and parameters with extendable framework for customised data type.  
-(Supports optional, varidac parameters for any of the supported data types.)  
+* Simplifies writing command line tools by mapping the command line arguments directly into functions and method.  
+* Performs automatic type detection and parsing for all variables, fields and parameters with extendable framework for customised data types.
+* Keeps all flags and commands in one place.  Simple to maintain and IDE friendly.
+* Clean and simple to use.  No interfaces, struct's or types required to learn, just a simple map.
   
+Unlike many command line parsers, Commandgo does not rely on any interface or predefined structures.  
+It will map into almost any function/method or variable/field already in your application, so you don't have to maintain
+additional code for your command line interface.  This works well for existing libraries and tools that require a simple
+command line interface applied to it.  Of course you can create one of your own, using generic struct's, functions and variable
+and map into these, but the choice is yours.
 
 ##### Goal
-The goal of this parser is to simplfy the boiler work of mapping command line arguments into commands, parameters and
-flags.  
-Partly insprired by [Spring IOC]("https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring") from
-the Java world, generic variables, structures and parameters can have their values 'injected' into them from an external
-source, in this case, the command line arguments.
-
-To use a function, simply write the function with the parameters you need and the framework will parse the given command line arguments
-into the correct types for your function.
-Global variables and struct fields can be mapped to flags, and the framework parses the flag values into the required type.
-
-### Commands map
-Commands map is the core aspect of the framework.  It maps elements from the command line (arguments) to variable, fields, functions and methods or sub commands.  
-The Command map consists of at least one map but can also have 'sub maps', mapping to additional sub commands and flag, to form a hierachey of commands.  
-Each map contains its own command set and flags for that particualr mapping.  
-This structure allows for a flexible command structure to be formed giving a logical context to each group of commands.  
-Commands which share flags can be groupped into one command map, isolating those flags from other commands.  
-These often map logically to command structs, each struct having a field set for flags and a respective comamnd map
-mapping its fields and methods to command line commands.
+The goal of this parser is to simplfy the boiler work of mapping command line arguments into your application.  
+The prime goals are:  
   
-e.g.  
++ Simplicity.  Interface must be clean, simple and obvious to anyone looking at it.
+No additional types or interfaces to be imposed on the developer.  They define the code, the framework maps into it.  
+  
++ Reduce code maintenance
+Keep code relating to the command line to a minimum. Keep the framework in the background.
+Single point of maintenance.  All commands and flags in one, easily editable place, with direct links (via IDE) to the point thay map to.
+Provide single point of help, easily maintained. (No double changes to text prompts and comments, use the comments!)  
+  
+Partly insprired by [Spring IOC]("https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring") from
+the Java world, structures and parameters can have their values 'injected' into them from an external
+source, in this case, the command line arguments.
+  
+A large part of the design was to keep the API as simple as possible, so you, the developer, doesn't have a steep learning curve to use the framework.  
+No complex structures or special interfaces to implement, Commandgo tries to be intuitive and obvious, so anyone should be able to look at your code
+and understand exactly what its doing without having to know or learn the framework behind it.  
+All the complexities of parsing value types and mapping functions is hidden away leaving the developer with a simple map.  
+This maps the strings expected in the command line arguments, into their respective locations within your application,
+those locations being functions, methods, variables or fields.  (known as mapped points)
+  
+### Usage
+To show an example Commands map, first, here is a fictional "deployment" application struct, which performs deployments of code.  
+This would be your own application code, just an example of something to map into.  
+```
+
+type EnvironmentType int
+const (
+	DEV EnvironmentType = iota
+	TEST
+	PROD
+)
+
+type Deployer struct {
+    // Config file holds the data to connect to the jenkins servers etc.
+    Config        io.ReaderCloser 
+    Environment   EnvironmentType
+}
+// DoDeploy performs a deployment of the given project, to the configured servers and returns the version deployed 
+func (d Deployer) DoDeploy(repoURL *url.URL) (float32, error) {
+   ...
+}
+// DeployedVersion gets the version of the project at the given repo
+func (d Deployer) DeployedVersion(repoURL *url.URL) (float32, error) {
+   ...
+}
+
+```  
+To map a command line interface into this application we might use a map something like this:
+```
+func main() {
+    // create our 'app' with its default settings
+    dp := &Deployer{Environment: DEV }
+    
+    cmds := commandgo.Commands{
+        "deploy": dp.DoDeploy,
+        "ver":    dp.DeployedVersion,
+         
+        "--config": &dp.Config,
+        "--env":    &dp.Environment,
+    }
+    
+    v, err := cmds.RunArgs()
+    if err != nil {
+        log.FatalLn(err)
+    }
+    
+    fmt.Println(v)
+}
+```
+
+The corresponding command line, for a binary named 'myapp', would be:  
+  
+``` 
+myapp ver https://github.com/eurzulu/blabla -config ~/.deploy/config.yaml 
+1.2
+
+```  
+``` 
+myapp deploy https://github.com/eurzulu/blabla -config ~/.deploy/config.yaml -env 1
+1.3
+
+```
+
+Both methods require a single URL parameter, returning a float, error so the framework parses the first arg after the 'command' as a url.  
+The two flags are also both parsed into their respective types The 'EnvironmentType' parses as an int.
+The Config field is defined as an interface `io.ReaderCloser`.  By default, the framework has a custom type of *File, which can handle this type.
+The *File type parses an argument as a local file path and opens the corrisponding file for that path.  
+  
+And that's it!  You have a command line application.
+  
+This is the simplest example to show how it works.  
+There's loads more features to help you maintain the most complex of command line parsing needs, from sub maps, default keys and functional flags to 
+custom type mapping and automatic help generation.  Read on to discover these and see how commandgo can take the grind work out of writing command line tool
+and let you focus on what the application does.  
+  
+  
+  
+### Commands
+The Commands map is the heart of the framework.  It's a simple map using string keys which map to `interface{}` values.  
+A very simple example:   
+```
+cmds := commandgo.Commands { 
+      "mycommand": MyFunction,  
+      "-myflag":   &SomeVariable,
+    }
+ ```
+Where `MyFunction` is an exported function and `SomeVariable` is a variable.
+The keys are the command line arguments and the `interface{}` value is either a func/method, or pointer to variable/field.    
+  
+Notice the function mapping requires no reference to the functions parameters, return values or their types, as with
+the variable and its type.  These are all detected and handled for you by the framework.  
+  
+Should `MyFunction` look something like this:  
+`func MyFunction(name string, id int, click *url.URL) (string, error) { ...}`    
+Then the framework will expect three command line arguments following the "mycommand" argument, and those arguments must be parsable as:  
+string, int and a url respectively.  If the wrong amount of arguments is given or they cannot be parsed into these types,
+the framework reports the error back to the user, informing them of what is required.  
+This frees the developer of the tedious task of parsing and basic validation.  
+Mappings can be to almost any type of function/method or to any variable/struct field.  
+
+The interface values can be one of three types:
++ func / method
++ variable/field pointer
++ another 'sub' Commands map
+
+A helpful bonus of having the function / variables directly referenced in the map is that most IDE's allow you to click through to the implementation or definition of that item.  
+Viewing the Commands map, you see the command being mapped, and a click takes you to the function or field it maps to.
+
+
+#### Mapping points
+Mapping points are the values, other than submaps, which keys are mapped to. i.e. func/methods, variable/fields.  
+These points can be ANY exported point of a library or application or point local to the same package.  
+For simple tools, your map can often call directly into the library or data model you wish to use,
+without the need for an intermedeate structure or interface.  For more complex needs, an intermediate structure can be used, grouping your flags and commands into 
+induvidual structs and performing 'pre-call' or 'post-call' operations, perhaps using flags set as fields etc.  
+  
+
+#### default key
+The default key is an empty string, when present, gives the Commands a default location to call when no arg->key mapping is found.  
+Without the default key, (the out of the box state) the framework will report a "missing command" or "unknown command" error when no key is found.  
+When present, this key is used when no other matches.  
+An important note about the default key is how parameters are handled.  Considure a cmd line of:  
+`hello world`  and a map with no matching key but a default key.  The framework will first search for the `hello` key as the command,
+and on failing, revert back to the default.  The `hello` will then revert to being a parameter (rather than a command).  
+With no default key, it will report `hello` as an unknown command.
+The same rules apply to the default mapping as any other, in that the arguments must match the mapping points type or signature.
+
+#### Command alias
+To specifiy more than one command name or flag, simply map two or more entiries with the same value.
+```
+cmd := commandgo.Commands{
+  "mylongcommandname" : MyCommands.LongName,
+  "mlcn"              : MyCommands.LongName,
+}
+```
+The Help system detects these multi entries and groups all keys into the same help subject.
+
+#### Submaps
+In addition to func and vars etc, values may also be other Commands maps, containing their own set of flags and command keys.  
+Using sub maps commands can be 'chained' into sequences, forming a hierarchy of commands.  
+e.g. `get users accounts`, the `get` is in the 'top' map as a key to another map containing the `users`
+key mapping to yet another map with the `accounts` key finally mapped to a function/method.  
+Each level of commands has its own set of flags (and alternative commands), only being parsed when that sequence if followed.  
+e.g. if we want a flag to apply to all `users` commands, we place them in the second map.  
+Flags only applying to `account` command, are placed in the last map and so on.  Flags and commands are 'scoped' to the map they're defined in.  
+When the final function map is found, all flags should have been assigned at their respective levels.  Remaining flags are considured an error.
+
+
+
+An example of submaps, here, a mapping of a "getter" and "putter" structs being used to map commands to get and put resources
+to either external urls, or local files.
 ```
 Commmands{
   "-verbose": &Verbose,
   "-log":     &logs.Level,
   "about":    showAbout,
-  "get": Commands {
+  "get": Commands{
       "":        getter.DoGet,
       "later":   getter.DelayedGet,
       "-format": &getter.OutputFormat,
   },
-  "put" : Commands {
-      "" :       putter.DoPut
-      "encrypt" :&putter.Encrypt,
-      "-key":    &putter.key,
-      "-user":   &putter.user,
-      "new" : Commands{ 
-          "":      builder.New,
-          "-name": &builder.Name, 
-          "-id":   &builder.Id, 
+  "put": Commands{
+      "":         putter.DoPut
+      "-encrypt": &putter.Encrypt,
+      "-key":     &putter.Key,
+      "-user":    &putter.User,
+      "new": Commands{ 
+          "":        builder.Build,
+          "-name":   &builder.Name, 
+          "-id":     &builder.Id, 
           "-status": &builder.Status,
   },
 }
-```  
+```    
   
 In this example there are five mappings in the 'root' map, two flags (-verbose, -log) and three commands, "get", "put" & "about".  
 The top level flag mappings are called global flags, as they are always available to all commands.  These usually map to global variable.   
 Regardless of the command being used, these flags will be parsed from the command line first.  
 Of the three top level commands, two, `get` and `put` map into methods and `about` maps to a global function `showAbout()`.
 The method mappings are using submaps to define some additional flags that are specific to those commands only.
-In addition, put has a third level command `new` which maps into a Builder object for creating new instances.  
+In addition, `put` has a third level command `new`  command which maps yet another submap and to a Builder object for creating new instances.  
 e.g.  
-```mycmd put http://myserver/theputtedstuff "This is the data" -encrypt -user john -key ~/.ssh/id_rsa.pub```  
+```myapp put http://myserver/theputtedstuff "This is the data" -encrypt -user john -key ~/.ssh/id_rsa.pub```  
 or  
-```mycmd put new -name mynewfile -id "blabla" -status draft```  
-  
-
+```mycmd put new -name mynewfile -id "blabla" -status draft```
 
 An example of what this map is mapping into:  
 ```
-type MyGetter struct {
-  Outputformat string
+type MyPutter struct {
+  Encrypt bool
+  Key *os.File
+  User string
 }
 
 func (mg MyGetter) DoGet(url *url.Url) (string, error) {
@@ -131,97 +287,83 @@ that position.
 will parse correctly.  
 `mycommand "1/1/2001T12:00:00" hello 4`  
 will throw an error of invalid date.
-
-Check the fields description for the data types supported as parameters.
-
+  
 #### Variadic Parameters
 Variadic parameters are supported.  When present, the command line arguments
 from the final position, onwards, are all parsed into a slice of the Variadic type.  
 These allow the command line to accept zero or more arguments optionaly.  
+Variadic parameters can be of any of the supported data types.  
 A func with a signature such as:
 ```
 func DoThis(s ...string) {}
 ```
-Can accept any command line passed to it as all args are strings already, any all are optional.
+Can accept any command line passed to it as all args are strings already, and all are optional.
 
 
 
 
-### Mappings
-Mappings map the command line argument to their respective points in the application or additional mappings.
-Mappings can be seen as two types, Commands and Flags.  The prime distinction between these is during execution,
-A single command is executed whereas ALL flags from the command line are executed, prior to the command execution.  
-Usually flags are mapped to variables or fields as a means of assigning a 'setting' the method/func call will use.  
-Usually, commands map to a func or method which is called and the result being the final output.  
-However this is only a concept which clarifies the usualy behaviour of a cmdline execution.  
-Internally mappings are viewed as assignments and calls.  Assignments being pointers to fields/variable and
-calls being methods/func.  Both flags and commands can map to either.  
-In addtion, mappings can also map to a sub command map, containing its own set of commands and flags.  
-Sub maps are passed the remaining comand line arguments, after the parent map flags have consumed its flags.  
-The process repeats on the sub map until it reaches a non sub map mapping (func or var)
   
- 
-The mapping consist of a unique string key, mapped to either:  
-- A pointer to a variable or field
-- A function or method
-- A 'sub map' of additional mappings.  
-  
-The key in the mapping should be any UTF8 string which could be reasonable input from the command line, with the exception of whitespace.  
-No whitespace is allowed in keys.  
-
-#### Default Key
-The map may contain a single empty key which is treated as the 'defualt' mapping for the map.  
-Default mapping is invoked when no command is found in the command line, after all the flags and their values have been removed.  
-  
-#### Data Types
+### Data Types
 When parsing the command line argument strings, the destination of the argument is examinied to determine its type.  
 e.g. "-myflag": &SomeFloat  pointing to a float var attempts to parse the string following the -myflag agument, into a float.  
 This is the same process for function parameters, struct fields and variables.
 When mappng to flags, the order of the command line is unimportant, flags can be anywhere in the command line.  
-When mapping to fucntions or methods, the order of the arguments and the count* must match that of the function parameters being called.
-*unless fecj/method uses varidatic parameters, in which case argument count must only match the non varidatic parameters. 
+When mapping to functions or methods, the order of the arguments and the count* must match that of the function parameters being called.  
+*unless function/method uses variadic parameters, in which case argument count must only match the non variadic parameters. 
 
-Most data types are supported:  
-+ int, int16, int32m int64, uint8, uint16, uint32, uint64
+Most data types are supported with the exception of channels:  
++ int, int16, int32 int64, uint8, uint16, uint32, uint64
 + float32 float64 
-+ >bool
++ bool
 + string    
 + slices 
 + maps
-+ >>struct
++ struct
   
->bool types are exceptional as they are the only type not requiring a value.  They default to true when no value is provided.  
->>structs are parsed as json from the command line or, if the struct supports encoding, will be Unmarshalled using that.
+`bool` types are exceptional as they are the only type not requiring a value.  They default to true when no value is provided.  
+`structs` are parsed as json from the command line or, if the struct supports encoding, will be Unmarshalled using that.
 + Those supporting [encoding.BinaryUnmarshaler](https://golang.org/pkg/encoding/#BinaryUnmarshaler) interface
 + Those supporting [encoding.TextUnmarshaler](https://golang.org/pkg/encoding/#TextUnmarshaler) interface
 
-Additional types can be added via the 'CustomType' system.  Three custom types are provided for you:
-
-
-### Custom Data type  
+Additional types can be added via the 'CustomType' system.  
+  
+  
+#### Custom Data type  
 Data type support can be extended using custom data types to allow mapping into variables or functions which use a specific type.  
 These types define a specific data type and provide a custom function to parse the string argument into that type.  
 The framework include three custom types out of the box:  
-+ *url.Url
++ \*url.Url
 + time.Time, time.Duration
-+ *os.File  
++ \*os.File  
   
 Custom types apply to both fields/variable values and func/method parameters.  
-By specifying a custom type, function parameters and variables of any type can be mapped directly from the command line and parsed in the required type.  
+By specifying a custom type, function parameters and variables of any type which can be mapped directly from the command line and parsed in the required type.
+The type only has to be "assignable", therefore a parameter type of say `io.Reader` will be parsed by the \*os.File custom type.  
+
+To define a new custom type use the `values.NewCustomType` method, which accepts a reflect.Type and a ArgValue function.  
+The ArgValue function is passed a string argument and a reflect.Type of the type required.  
+It returns an `interface{}, error` of the value it parses the argument into.  
   
-CustomTypes uses the `NewCustomType` method, which accepts a reflect.Type and a ArgValue function.
-
-
-#### Command alias
-
-To specifiy more than one command name or flag, simply map two or more entiries with the same value.
+As an example of a custom type, take the first example "deployment" app above, the EnvironmentType is an `int` const.  
+Rather than accept numbers on the command line, we could map this from a more natural string name:  
 ```
-cmd := commandgo.Commands{
-  "mylongcommandname" : MyCommands.LongName,
-  "mlcn"              : MyCommands.LongName,
-}
-```
-The Help system detects these multi entries and groups all keys into the same help subject.  
+ett := reflect.TypeOf(EnvironmentType(0))
+values.NewCustomType(ett, func(s string, t reflect.Type) (interface{}, error) {
+	switch s {
+	case "DEV":
+		return DEV, nil
+	case "TEST":
+		return TEST, nil
+	case "PROD":
+		return PROD, nil
+	default:
+	    return 0, fmt.Errorf("%s is not a known environment", s)
+	}
+})
+```  
+Then the flag would be more natural `-env DEV` rather than `-env 0`  
+Once registered this way, the type will automatically be called on all values which are assignable to `EnvironmentType`.  
+
 
 
 ### Help System
