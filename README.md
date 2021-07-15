@@ -110,8 +110,8 @@ myapp deploy https://github.com/eurzulu/blabla -config ~/.deploy/config.yaml -en
   
 This is the simplest example to show how it works.  
 There's loads more features to help you maintain the most complex of command line parsing needs, from sub maps, default keys and functional flags to 
-custom type mapping and automatic help generation.  Read on to discover these and see how commandgo can take the grind work out of writing command line tool
-and let you focus on what the application does.  
+custom type mapping and automatic help generation.  
+Read on to discover these and see how commandgo can take the grind work out of writing command line tools and let you focus on what your application does.  
   
   
   
