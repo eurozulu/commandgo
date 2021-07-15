@@ -85,6 +85,15 @@ func main() {
 }
 ```
 
+
+And that's it!  You have a command line application.
+
+Both methods require a single URL parameter, returning a float, error so the framework parses the first arg after the 'command' as a url.
+The two flags are also both parsed into their respective types The 'EnvironmentType' parses as an int.
+The Config field is defined as an interface `io.ReaderCloser`.  By default, the framework has a custom type of *File, which can handle this type.
+The *File type parses an argument as a local file path and opens the corrisponding file for that path.  
+  
+
 The corresponding command line, for a binary named 'myapp', would be:  
   
 ``` 
@@ -98,12 +107,6 @@ myapp deploy https://github.com/eurzulu/blabla -config ~/.deploy/config.yaml -en
 
 ```
 
-Both methods require a single URL parameter, returning a float, error so the framework parses the first arg after the 'command' as a url.  
-The two flags are also both parsed into their respective types The 'EnvironmentType' parses as an int.
-The Config field is defined as an interface `io.ReaderCloser`.  By default, the framework has a custom type of *File, which can handle this type.
-The *File type parses an argument as a local file path and opens the corrisponding file for that path.  
-  
-And that's it!  You have a command line application.
   
 This is the simplest example to show how it works.  
 There's loads more features to help you maintain the most complex of command line parsing needs, from sub maps, default keys and functional flags to 
