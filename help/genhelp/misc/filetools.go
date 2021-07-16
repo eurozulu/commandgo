@@ -19,9 +19,9 @@ func inSlice(s string, ss []string) bool {
 	return false
 }
 
-// findPackage locates the directory of containing the named package.
-func findPackage(name string, srcPaths []string) (string, error) {
-	names, err := collectSrcDirectories(srcPaths)
+// FindPackage locates the directory of containing the named package.
+func FindPackage(name string, srcPaths []string) (string, error) {
+	names, err := CollectSrcDirectories(srcPaths)
 	if err != nil {
 		return "", err
 	}
@@ -42,9 +42,9 @@ func findPackage(name string, srcPaths []string) (string, error) {
 	return "", fmt.Errorf("%s package could not be found", name)
 }
 
-// collectSrcDirectories colelcts the full path names of the given directories which contain .go files.
+// CollectSrcDirectories colelcts the full path names of the given directories which contain .go files.
 // if any of the given paths end with "/..." the sub directories of that path are also searched.
-func collectSrcDirectories(paths []string) ([]string, error) {
+func CollectSrcDirectories(paths []string) ([]string, error) {
 	var found []string
 	for _, p := range paths {
 		r := strings.HasSuffix(p, "/...")
@@ -63,7 +63,7 @@ func collectSrcDirectories(paths []string) ([]string, error) {
 		if !r {
 			continue
 		}
-		sds, err := collectSrcDirectories(subDirectories(p, fis))
+		sds, err := CollectSrcDirectories(subDirectories(p, fis))
 		found = append(found, sds...)
 	}
 	return found, nil

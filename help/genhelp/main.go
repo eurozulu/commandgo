@@ -58,7 +58,7 @@ func MakeHelp(src ...string) error {
 	if len(src) == 0 {
 		src = []string{defaultSrcPath}
 	}
-	srcPaths, err := misc.collectSrcDirectories(src)
+	srcPaths, err := misc.CollectSrcDirectories(src)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func MakeHelp(src ...string) error {
 		Outname = strings.Join([]string{Outname, "go"}, ".")
 	}
 
-	pkgPath, err := misc.findPackage(PackageName, srcPaths)
+	pkgPath, err := misc.FindPackage(PackageName, srcPaths)
 	if err != nil {
 		return err
 	}
