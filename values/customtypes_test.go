@@ -1,8 +1,8 @@
 package values_test
 
 import (
-	"commandgo/values"
 	"fmt"
+	"github.com/eurozulu/commandgo/values"
 	"net/url"
 	"reflect"
 	"testing"

@@ -1,10 +1,6 @@
 package commandgo
 
 import (
-	"commandgo/arguments"
-	"commandgo/functions"
-	"commandgo/help"
-	"commandgo/values"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +8,11 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/eurozulu/commandgo/arguments"
+	"github.com/eurozulu/commandgo/functions"
+	"github.com/eurozulu/commandgo/help"
+	"github.com/eurozulu/commandgo/values"
 )
 
 var ErrorNoCommandFound = errors.New("no command found")
