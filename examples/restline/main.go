@@ -15,9 +15,9 @@
 package main
 
 import (
-	"commandgo"
-	"commandgo/examples/restline/restutils"
 	"fmt"
+	"github.com/eurozulu/commandgo"
+	"github.com/eurozulu/commandgo/examples/restline/restutils"
 	"log"
 )
 

@@ -15,7 +15,7 @@
 package functions
 
 import (
-	"commandgo/values"
+	"github.com/eurozulu/commandgo/values"
 	"reflect"
 	"runtime"
 	"strings"

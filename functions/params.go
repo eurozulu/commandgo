@@ -16,8 +16,8 @@ package functions
 
 import (
 	"bytes"
-	"commandgo/values"
 	"fmt"
+	"github.com/eurozulu/commandgo/values"
 	"reflect"
 	"strings"
 )
